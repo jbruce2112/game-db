@@ -1,0 +1,73 @@
+package model
+
+import (
+	"strings"
+	"time"
+)
+
+const CompletenessUnknown = "unknown"
+const CompletenessLoose = "loose"
+const CompletenessCIB = "cib"
+const CompletenessNew = "new"
+
+type Item struct {
+	ID             string     `json:"id"`
+	Title          string     `json:"title"`
+	Platform       string     `json:"platform"`
+	IGDBPlatformID *int64     `json:"igdb_platform_id"`
+	Region         *string    `json:"region"`
+	Completeness   string     `json:"completeness"`
+	Notes          string     `json:"notes"`
+	IGDBGameID     *int64     `json:"igdb_game_id"`
+	CoverID        *string    `json:"cover_id"`
+	CoverURL       *string    `json:"cover_url,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	DeletedAt      *time.Time `json:"deleted_at"`
+	SyncSeq        int64      `json:"sync_seq"`
+}
+
+func NormalizeCompleteness(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case CompletenessLoose, CompletenessCIB, CompletenessNew:
+		return strings.ToLower(s)
+	default:
+		return CompletenessUnknown
+	}
+}
+
+func NormalizeRegion(s string) *string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	switch s {
+	case "us", "eu", "jp", "au", "other":
+		return &s
+	default:
+		return nil
+	}
+}
+
+func CoverURL(coverID *string) *string {
+	if coverID == nil || *coverID == "" {
+		return nil
+	}
+	u := "/v1/covers/" + *coverID
+	return &u
+}
+
+func TimeUTC(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Second)
+}
+
+func ParseTime(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return TimeUTC(t), nil
+	}
+	return time.Parse(time.RFC3339Nano, s)
+}
+
+func FormatTime(t time.Time) string {
+	return TimeUTC(t).Format(time.RFC3339)
+}

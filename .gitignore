@@ -1,0 +1,17 @@
+.env
+data/*
+!data/.gitkeep
+web/node_modules/
+web/dist/
+web/dist-ssr/
+*.log
+.DS_Store
+server/frontend/assets/
+ios/GameDB/build/
+ios/DerivedData/
+xcuserdata/
+*.xcresult
+.swiftpm/
+.idea/
+.vscode/
+*.xcuserstate

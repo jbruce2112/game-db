@@ -1,0 +1,300 @@
+openapi: 3.0.3
+info:
+  title: game-db API
+  version: 0.1.0
+  description: Self-hosted physical video game library. Auth is a single shared password.
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+  /v1/auth/login:
+    post:
+      summary: Exchange password for a session cookie and bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        "200":
+          description: Authenticated. Sets httpOnly cookie game_db_session.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token: { type: string }
+        "401":
+          $ref: "#/components/responses/Error"
+  /v1/auth/logout:
+    post:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      responses:
+        "204": { description: Token revoked }
+  /v1/auth/me:
+    get:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  igdb_configured: { type: boolean }
+  /v1/library:
+    get:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: platform
+          schema: { type: string }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [title, added] }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/LibraryItem" }
+    post:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibraryItemWrite" }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryItem" }
+  /v1/library/{id}:
+    get:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ItemID"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryItem" }
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ItemID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibraryItemPatch" }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryItem" }
+    delete:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ItemID"
+      responses:
+        "200":
+          description: Tombstoned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryItem" }
+  /v1/sync:
+    post:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cursor, changes]
+              properties:
+                cursor: { type: integer, format: int64, minimum: 0 }
+                changes:
+                  type: array
+                  items: { $ref: "#/components/schemas/LibraryItem" }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cursor, changes]
+                properties:
+                  cursor: { type: integer, format: int64 }
+                  changes:
+                    type: array
+                    items: { $ref: "#/components/schemas/LibraryItem" }
+  /v1/platforms:
+    get:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  platforms:
+                    type: array
+                    items: { $ref: "#/components/schemas/Platform" }
+        "503":
+          description: IGDB not configured
+  /v1/search/games:
+    get:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: platform
+          schema: { type: integer }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games:
+                    type: array
+                    items: { $ref: "#/components/schemas/SearchGame" }
+        "503":
+          description: IGDB not configured
+  /v1/covers/{id}:
+    get:
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Image bytes
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404":
+          $ref: "#/components/responses/Error"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: game_db_session
+  parameters:
+    ItemID:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+  schemas:
+    LibraryItem:
+      type: object
+      required: [id, title, platform, completeness, notes, created_at, updated_at, sync_seq]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        platform: { type: string }
+        igdb_platform_id: { type: integer, nullable: true }
+        region:
+          type: string
+          nullable: true
+          enum: [us, eu, jp, au, other]
+        completeness:
+          type: string
+          enum: [unknown, loose, cib, new]
+        notes: { type: string }
+        igdb_game_id: { type: integer, nullable: true }
+        cover_id: { type: string, format: uuid, nullable: true }
+        cover_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+        sync_seq: { type: integer, format: int64 }
+    LibraryItemWrite:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        platform: { type: string }
+        igdb_platform_id: { type: integer }
+        region: { type: string }
+        completeness: { type: string }
+        notes: { type: string }
+        igdb_game_id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    LibraryItemPatch:
+      type: object
+      properties:
+        title: { type: string }
+        platform: { type: string }
+        igdb_platform_id: { type: integer, nullable: true }
+        region: { type: string, nullable: true }
+        completeness: { type: string }
+        notes: { type: string }
+    Platform:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        abbreviation: { type: string }
+    SearchGame:
+      type: object
+      properties:
+        igdb_id: { type: integer }
+        name: { type: string }
+        summary: { type: string }
+        cover_url: { type: string, nullable: true }
+        first_release_date: { type: string, nullable: true }
+        platforms:
+          type: array
+          items: { $ref: "#/components/schemas/Platform" }
