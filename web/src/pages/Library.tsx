@@ -9,6 +9,8 @@ export default function Library({ igdb }: { igdb: boolean }) {
   const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("title");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
   const nav = useNavigate();
   const qc = useQueryClient();
 
@@ -41,6 +43,44 @@ export default function Library({ igdb }: { igdb: boolean }) {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => api.exportCSV({ q, platform, sort })}
+            disabled={items.length === 0}
+            className="rounded-lg border border-[#2a2e38] px-3 py-2 text-sm text-[#9aa3b2] disabled:opacity-40"
+          >
+            Export CSV
+          </button>
+          <label className="rounded-lg border border-[#2a2e38] px-3 py-2 text-sm text-[#9aa3b2] disabled:opacity-40 cursor-pointer">
+            {importing ? "Importing…" : "Import CSV"}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              disabled={importing}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                if (
+                  !confirm(
+                    "Import replaces your entire library with this CSV. This cannot be undone. Continue?",
+                  )
+                ) {
+                  return;
+                }
+                setImportError("");
+                setImporting(true);
+                try {
+                  await api.importCSV(file);
+                  await qc.invalidateQueries({ queryKey: ["library"] });
+                } catch (err) {
+                  setImportError(err instanceof Error ? err.message : "Import failed");
+                } finally {
+                  setImporting(false);
+                }
+              }}
+            />
+          </label>
           <Link
             to="/add"
             className="rounded-lg bg-[#e2b14a] px-3 py-2 text-sm font-medium text-[#111]"
@@ -101,6 +141,7 @@ export default function Library({ igdb }: { igdb: boolean }) {
 
       {lib.isLoading && <p className="mt-10 text-[#9aa3b2]">Loading…</p>}
       {lib.isError && <p className="mt-10 text-red-400">Could not load library.</p>}
+      {importError && <p className="mt-4 text-red-400">{importError}</p>}
 
       {!lib.isLoading && items.length === 0 && (
         <div className="mt-16 text-center text-[#9aa3b2]">

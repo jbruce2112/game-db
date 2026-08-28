@@ -75,6 +75,38 @@ final class LibraryStore {
         try upsert(item)
     }
 
+    func importCSV(_ data: Data) async {
+        errorMessage = nil
+        do {
+            if isPaired {
+                _ = try await api.importCSV(data)
+                try await db.write { db in
+                    try db.execute(sql: "DELETE FROM library_items")
+                    try db.execute(sql: "DELETE FROM meta")
+                }
+                coverCache.removeAll()
+                await runSync()
+            } else {
+                guard let text = String(data: data, encoding: .utf8) else {
+                    errorMessage = "CSV must be UTF-8"
+                    return
+                }
+                let parsed = try LibraryCSV.parse(text)
+                try await db.write { db in
+                    try db.execute(sql: "DELETE FROM library_items")
+                    try db.execute(sql: "DELETE FROM meta")
+                    for item in parsed {
+                        try item.insert(db)
+                    }
+                }
+                coverCache.removeAll()
+                try reload()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func delete(_ item: LibraryItem) throws {
         var copy = item.touching()
         copy.deletedAt = LibraryItem.now()

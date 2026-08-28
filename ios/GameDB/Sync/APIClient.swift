@@ -63,6 +63,15 @@ final class APIClient {
         return parsed.igdbConfigured
     }
 
+    func importCSV(_ data: Data) async throws -> Int {
+        var req = try request(path: "/v1/library/import", method: "POST")
+        req.setValue("text/csv", forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+        let (body, resp) = try await session.data(for: req)
+        try throwIfNeeded(resp, data: body)
+        return try JSONDecoder().decode(ImportResponse.self, from: body).imported
+    }
+
     func libraryItems() async throws -> [LibraryItem] {
         let (data, resp) = try await session.data(for: try request(path: "/v1/library", method: "GET"))
         try throwIfNeeded(resp, data: data)
@@ -154,4 +163,5 @@ private struct MeResponse: Codable {
 }
 private struct SearchEnvelope: Codable { var games: [SearchGame] }
 private struct LibraryEnvelope: Codable { var items: [LibraryItem] }
+private struct ImportResponse: Codable { var imported: Int }
 private struct ErrorBody: Codable { var error: String }

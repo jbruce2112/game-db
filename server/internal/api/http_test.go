@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"game-db/internal/config"
@@ -68,8 +69,8 @@ func TestLoginAndCRUD(t *testing.T) {
 	}
 
 	create, _ := json.Marshal(map[string]string{
-		"title":    "Ocarina of Time",
-		"platform": "Nintendo 64",
+		"title":        "Ocarina of Time",
+		"platform":     "Nintendo 64",
 		"completeness": "cib",
 	})
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
@@ -90,6 +91,110 @@ func TestLoginAndCRUD(t *testing.T) {
 	}
 	if item["title"] != "Ocarina of Time" {
 		t.Fatalf("%v", item)
+	}
+}
+
+func TestImportCSVReplacesLibrary(t *testing.T) {
+	srv := httptest.NewServer(testServer(t))
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	ok, _ := json.Marshal(map[string]string{"password": "secret"})
+	res, err := client.Post(srv.URL+"/v1/auth/login", "application/json", bytes.NewReader(ok))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var login struct{ Token string }
+	if err := json.NewDecoder(res.Body).Decode(&login); err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	auth := func(req *http.Request) { req.Header.Set("Authorization", "Bearer "+login.Token) }
+
+	create, _ := json.Marshal(map[string]string{"title": "Old Game", "platform": "NES"})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
+	req.Header.Set("Content-Type", "application/json")
+	auth(req)
+	res, _ = client.Do(req)
+	res.Body.Close()
+
+	csvBody := "title,platform,region,completeness,notes\nSuper Mario Sunshine,Nintendo GameCube,us,cib,amazing\n"
+	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/v1/library/import", strings.NewReader(csvBody))
+	req.Header.Set("Content-Type", "text/csv")
+	auth(req)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != 200 {
+		t.Fatalf("import %d %s", res.StatusCode, raw)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/library", nil)
+	auth(req)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var list struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 1 || list.Items[0]["title"] != "Super Mario Sunshine" {
+		t.Fatalf("%v", list.Items)
+	}
+}
+
+func TestExportCSV(t *testing.T) {
+	srv := httptest.NewServer(testServer(t))
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	ok, _ := json.Marshal(map[string]string{"password": "secret"})
+	res, err := client.Post(srv.URL+"/v1/auth/login", "application/json", bytes.NewReader(ok))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var login struct{ Token string }
+	if err := json.NewDecoder(res.Body).Decode(&login); err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+
+	create, _ := json.Marshal(map[string]string{"title": "Mario, Sunshine", "platform": "GameCube", "notes": `say "hi"`})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+login.Token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != 201 {
+		t.Fatalf("create %d", res.StatusCode)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/library.csv", nil)
+	req.Header.Set("Authorization", "Bearer "+login.Token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 200 {
+		t.Fatalf("csv %d %s", res.StatusCode, body)
+	}
+	ct := res.Header.Get("Content-Type")
+	if !strings.Contains(ct, "text/csv") {
+		t.Fatalf("content-type %s", ct)
+	}
+	s := string(body)
+	if !strings.Contains(s, `"Mario, Sunshine"`) {
+		t.Fatalf("csv body: %s", s)
 	}
 }
 

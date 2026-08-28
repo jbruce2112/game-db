@@ -108,6 +108,24 @@ func (s *Store) Get(ctx context.Context, id string) (model.Item, error) {
 	return item, nil
 }
 
+func (s *Store) ReplaceAll(ctx context.Context, items []model.Item) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM library_items`); err != nil {
+		return err
+	}
+	for i, item := range items {
+		item.SyncSeq = int64(i + 1)
+		if err := insertItem(ctx, tx, item); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (s *Store) Insert(ctx context.Context, item model.Item) (model.Item, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -359,9 +377,9 @@ type scanner interface {
 
 func scanItem(row scanner) (model.Item, error) {
 	var (
-		it                     model.Item
-		igdbPlat, igdbGame     sql.NullInt64
-		created, upd           string
+		it                        model.Item
+		igdbPlat, igdbGame        sql.NullInt64
+		created, upd              string
 		regionN, coverN, deletedN sql.NullString
 	)
 	err := row.Scan(

@@ -1,9 +1,11 @@
 import SwiftUI
+import UIKit
 
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var store
     @State private var showAdd = false
     @State private var showSettings = false
+    @State private var csvShare: CSVShare?
 
     var body: some View {
         @Bindable var store = store
@@ -68,8 +70,22 @@ struct LibraryView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        let active = store.items.filter { ($0.deletedAt ?? "").isEmpty }
+                        if let url = try? LibraryCSV.fileURL(from: active) {
+                            csvShare = CSVShare(url: url)
+                        }
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .disabled(store.items.filter { ($0.deletedAt ?? "").isEmpty }.isEmpty)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button { showAdd = true } label: { Image(systemName: "plus") }
                 }
+            }
+            .sheet(item: $csvShare) { share in
+                ShareSheet(items: [share.url])
             }
             .safeAreaInset(edge: .bottom) {
                 HStack {
@@ -105,4 +121,19 @@ struct LibraryView: View {
         }
         return store.syncMessage.isEmpty ? "Offline" : store.syncMessage
     }
+}
+
+private struct CSVShare: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    var items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

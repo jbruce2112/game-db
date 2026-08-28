@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"game-db/internal/export"
 	"game-db/internal/model"
 	"game-db/internal/store"
 )
@@ -38,6 +40,62 @@ func (h *Handler) listLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
+	raw, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "could not read body")
+		return
+	}
+	items, err := export.ParseLibraryCSV(raw)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.igdb != nil && h.cfg.IGDBConfigured() {
+		for i := range items {
+			h.attachCoverFromIGDB(r, &items[i])
+		}
+	}
+	if err := h.store.ReplaceAll(r.Context(), items); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"imported": len(items)})
+}
+
+func (h *Handler) attachCoverFromIGDB(r *http.Request, item *model.Item) {
+	if item.IGDBGameID == nil {
+		return
+	}
+	game, err := h.igdb.Game(r.Context(), *item.IGDBGameID)
+	if err != nil || game.CoverImageID == "" {
+		return
+	}
+	_ = h.cacheCover(r, item, game.CoverImageID)
+}
+
+func (h *Handler) exportLibraryCSV(w http.ResponseWriter, r *http.Request) {
+	items, err := h.store.List(r.Context(), store.ListFilter{
+		Platform: r.URL.Query().Get("platform"),
+		Query:    r.URL.Query().Get("q"),
+		Sort:     r.URL.Query().Get("sort"),
+	})
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	raw, err := export.LibraryCSV(items)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	name := export.Filename(time.Now())
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(raw)
 }
 
 func (h *Handler) getLibrary(w http.ResponseWriter, r *http.Request) {

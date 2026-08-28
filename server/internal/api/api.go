@@ -25,11 +25,11 @@ import (
 const cookieName = "game_db_session"
 
 type Handler struct {
-	cfg       config.Config
-	store     *store.Store
-	igdb      *igdb.Client
-	log       *slog.Logger
-	frontend  fs.FS
+	cfg      config.Config
+	store    *store.Store
+	igdb     *igdb.Client
+	log      *slog.Logger
+	frontend fs.FS
 }
 
 func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, frontend fs.FS) *Handler {
@@ -45,6 +45,8 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("GET /v1/auth/me", h.auth(h.me))
 
 	mux.HandleFunc("GET /v1/library", h.auth(h.listLibrary))
+	mux.HandleFunc("GET /v1/library.csv", h.auth(h.exportLibraryCSV))
+	mux.HandleFunc("POST /v1/library/import", h.auth(h.importLibraryCSV))
 	mux.HandleFunc("POST /v1/library", h.auth(h.createLibrary))
 	mux.HandleFunc("GET /v1/library/{id}", h.auth(h.getLibrary))
 	mux.HandleFunc("PATCH /v1/library/{id}", h.auth(h.patchLibrary))
@@ -243,5 +245,3 @@ func intQuery(r *http.Request, name string) int64 {
 	n, _ := strconv.ParseInt(v, 10, 64)
 	return n
 }
-
-

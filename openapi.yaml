@@ -93,6 +93,45 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LibraryItem" }
+  /v1/library/import:
+    post:
+      summary: Replace the entire library with a CSV (same columns as export)
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported: { type: integer }
+        "400":
+          $ref: "#/components/responses/Error"
+  /v1/library.csv:
+    get:
+      summary: Download the library as CSV (same filters as GET /v1/library)
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: platform
+          schema: { type: string }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [title, added] }
+      responses:
+        "200":
+          description: CSV attachment
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
   /v1/library/{id}:
     get:
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]
