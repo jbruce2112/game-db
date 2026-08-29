@@ -39,6 +39,15 @@ Web UI: http://localhost:5173
 cd server && go test ./...
 ```
 
+## Barcode
+
+Scan a box UPC/EAN to add a game.
+
+- **iOS:** camera button on the library, or Add → Scan. The Simulator has no camera; type the digits.
+- **Web:** Add game → Barcode. Camera works in Chromium-based browsers that support `BarcodeDetector`; otherwise type the code.
+
+The server looks the code up in a product catalog (upcitemdb, then Open Products Facts), caches the result, then searches IGDB with a cleaned title. The barcode is stored on the copy and included in CSV export/import. There is no official IGDB barcode field, so a miss still lets you add the title by hand with the code attached.
+
 ## iOS
 
 Open `ios/GameDB.xcodeproj` in Xcode (iOS 17+). On Xcode 26, install the matching **iOS platform** from Settings → Components before the Simulator destination appears. Run on the Simulator for local-only use. To sync, set the server URL (e.g. `http://<lan-ip>:8080`) and the same password in Settings.

@@ -10,6 +10,7 @@ struct GameDetailView: View {
     @State private var region = ""
     @State private var completeness = "unknown"
     @State private var notes = ""
+    @State private var barcode = ""
 
     private var item: LibraryItem? {
         store.items.first(where: { $0.id == itemID && ($0.deletedAt ?? "").isEmpty })
@@ -42,6 +43,8 @@ struct GameDetailView: View {
                         Text("CIB").tag("cib")
                         Text("New / sealed").tag("new")
                     }
+                    TextField("Barcode", text: $barcode)
+                        .keyboardType(.numberPad)
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
@@ -68,6 +71,7 @@ struct GameDetailView: View {
         region = item.region ?? ""
         completeness = item.completeness
         notes = item.notes
+        barcode = item.barcode ?? ""
     }
 
     private func save(_ item: LibraryItem) {
@@ -77,6 +81,8 @@ struct GameDetailView: View {
         next.region = region.isEmpty ? nil : region
         next.completeness = completeness
         next.notes = notes
+        let code = barcode.filter(\.isNumber)
+        next.barcode = code.isEmpty ? nil : code
         try? store.upsert(next)
         dismiss()
     }

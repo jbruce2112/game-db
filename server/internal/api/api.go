@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"game-db/internal/barcode"
 	"game-db/internal/config"
 	"game-db/internal/igdb"
 	"game-db/internal/store"
@@ -25,11 +27,12 @@ import (
 const cookieName = "game_db_session"
 
 type Handler struct {
-	cfg      config.Config
-	store    *store.Store
-	igdb     *igdb.Client
-	log      *slog.Logger
-	frontend fs.FS
+	cfg           config.Config
+	store         *store.Store
+	igdb          *igdb.Client
+	log           *slog.Logger
+	frontend      fs.FS
+	productLookup func(ctx context.Context, codes []string) (barcode.Product, error)
 }
 
 func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, frontend fs.FS) *Handler {
@@ -55,6 +58,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("POST /v1/sync", h.auth(h.sync))
 	mux.HandleFunc("GET /v1/platforms", h.auth(h.platforms))
 	mux.HandleFunc("GET /v1/search/games", h.auth(h.searchGames))
+	mux.HandleFunc("GET /v1/search/barcode", h.auth(h.searchBarcode))
 	mux.HandleFunc("GET /v1/covers/{id}", h.auth(h.cover))
 
 	mux.HandleFunc("GET /{path...}", h.spa)

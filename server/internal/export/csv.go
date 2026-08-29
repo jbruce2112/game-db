@@ -18,6 +18,7 @@ var csvHeader = []string{
 	"notes",
 	"igdb_game_id",
 	"igdb_platform_id",
+	"barcode",
 	"created_at",
 	"updated_at",
 }
@@ -39,6 +40,7 @@ func LibraryCSV(items []model.Item) ([]byte, error) {
 			it.Notes,
 			fmtInt(it.IGDBGameID),
 			fmtInt(it.IGDBPlatformID),
+			deref(it.Barcode),
 			model.FormatTime(it.CreatedAt),
 			model.FormatTime(it.UpdatedAt),
 		}); err != nil {

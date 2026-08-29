@@ -88,6 +88,15 @@ final class APIClient {
         return try JSONDecoder().decode(SyncResponse.self, from: data)
     }
 
+    func searchBarcode(_ q: String) async throws -> BarcodeSearch {
+        var comps = URLComponents(url: try url("/v1/search/barcode"), resolvingAgainstBaseURL: false)!
+        comps.queryItems = [URLQueryItem(name: "q", value: q)]
+        let req = try request(url: comps.url!, method: "GET")
+        let (data, resp) = try await session.data(for: req)
+        try throwIfNeeded(resp, data: data)
+        return try JSONDecoder().decode(BarcodeSearch.self, from: data)
+    }
+
     func search(q: String) async throws -> [SearchGame] {
         var comps = URLComponents(url: try url("/v1/search/games"), resolvingAgainstBaseURL: false)!
         comps.queryItems = [URLQueryItem(name: "q", value: q)]
@@ -97,22 +106,23 @@ final class APIClient {
         return try JSONDecoder().decode(SearchEnvelope.self, from: data).games
     }
 
-    func createFromIGDB(gameId: Int64, platformId: Int64, region: String?, completeness: String) async throws -> LibraryItem {
+    func createFromIGDB(gameId: Int64, platformId: Int64?, region: String?, completeness: String, barcode: String? = nil) async throws -> LibraryItem {
         struct Body: Codable {
             var igdbGameId: Int64
-            var igdbPlatformId: Int64
+            var igdbPlatformId: Int64?
             var region: String?
             var completeness: String
+            var barcode: String?
             enum CodingKeys: String, CodingKey {
                 case igdbGameId = "igdb_game_id"
                 case igdbPlatformId = "igdb_platform_id"
-                case region, completeness
+                case region, completeness, barcode
             }
         }
         var req = try request(path: "/v1/library", method: "POST")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(Body(
-            igdbGameId: gameId, igdbPlatformId: platformId, region: region, completeness: completeness
+            igdbGameId: gameId, igdbPlatformId: platformId, region: region, completeness: completeness, barcode: barcode
         ))
         let (data, resp) = try await session.data(for: req)
         try throwIfNeeded(resp, data: data)

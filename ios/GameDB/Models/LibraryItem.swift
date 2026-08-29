@@ -11,13 +11,14 @@ struct LibraryItem: Identifiable, Equatable, Hashable {
     var notes: String
     var igdbGameId: Int64?
     var coverId: String?
+    var barcode: String?
     var createdAt: String
     var updatedAt: String
     var deletedAt: String?
     var syncSeq: Int64
     var dirty: Bool
 
-    static func newLocal(title: String, platform: String, region: String?, completeness: String, notes: String) -> LibraryItem {
+    static func newLocal(title: String, platform: String, region: String?, completeness: String, notes: String, barcode: String? = nil) -> LibraryItem {
         let now = Self.now()
         return LibraryItem(
             id: UUID().uuidString.lowercased(),
@@ -29,6 +30,7 @@ struct LibraryItem: Identifiable, Equatable, Hashable {
             notes: notes,
             igdbGameId: nil,
             coverId: nil,
+            barcode: barcode,
             createdAt: now,
             updatedAt: now,
             deletedAt: nil,
@@ -55,6 +57,7 @@ extension LibraryItem: Codable {
         case igdbPlatformId = "igdb_platform_id"
         case igdbGameId = "igdb_game_id"
         case coverId = "cover_id"
+        case barcode
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case deletedAt = "deleted_at"
@@ -72,6 +75,11 @@ extension LibraryItem: Codable {
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         igdbGameId = try c.decodeIfPresent(Int64.self, forKey: .igdbGameId)
         coverId = try c.decodeIfPresent(String.self, forKey: .coverId)
+        if let raw = try c.decodeIfPresent(String.self, forKey: .barcode), !raw.isEmpty {
+            barcode = raw
+        } else {
+            barcode = nil
+        }
         createdAt = try c.decode(String.self, forKey: .createdAt)
         updatedAt = try c.decode(String.self, forKey: .updatedAt)
         if let deleted = try c.decodeIfPresent(String.self, forKey: .deletedAt), !deleted.isEmpty {
@@ -94,6 +102,11 @@ extension LibraryItem: Codable {
         try c.encode(notes, forKey: .notes)
         try c.encodeIfPresent(igdbGameId, forKey: .igdbGameId)
         try c.encodeIfPresent(coverId, forKey: .coverId)
+        if let barcode {
+            try c.encode(barcode, forKey: .barcode)
+        } else {
+            try c.encodeNil(forKey: .barcode)
+        }
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(updatedAt, forKey: .updatedAt)
         try c.encodeIfPresent(deletedAt, forKey: .deletedAt)
@@ -114,6 +127,7 @@ extension LibraryItem: FetchableRecord, PersistableRecord {
         notes = row["notes"]
         igdbGameId = row["igdb_game_id"]
         coverId = row["cover_id"]
+        barcode = row["barcode"]
         createdAt = row["created_at"]
         updatedAt = row["updated_at"]
         deletedAt = row["deleted_at"]
@@ -132,6 +146,7 @@ extension LibraryItem: FetchableRecord, PersistableRecord {
         container["notes"] = notes
         container["igdb_game_id"] = igdbGameId
         container["cover_id"] = coverId
+        container["barcode"] = barcode
         container["created_at"] = createdAt
         container["updated_at"] = updatedAt
         container["deleted_at"] = deletedAt
@@ -171,6 +186,45 @@ struct SearchGame: Codable, Identifiable {
 struct SearchPlatform: Codable, Identifiable, Hashable {
     var id: Int64
     var name: String
+}
+
+struct BarcodeSearch: Codable {
+    var barcode: String
+    var productTitle: String?
+    var query: String?
+    var source: String?
+    var platformHint: String?
+    var platform: String?
+    var lookupError: String?
+    var games: [SearchGame]
+    var owned: [OwnedCopy]
+
+    enum CodingKeys: String, CodingKey {
+        case barcode, query, source, games, owned
+        case productTitle = "product_title"
+        case platformHint = "platform_hint"
+        case platform
+        case lookupError = "lookup_error"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        barcode = try c.decode(String.self, forKey: .barcode)
+        productTitle = try c.decodeIfPresent(String.self, forKey: .productTitle)
+        query = try c.decodeIfPresent(String.self, forKey: .query)
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        platformHint = try c.decodeIfPresent(String.self, forKey: .platformHint)
+        platform = try c.decodeIfPresent(String.self, forKey: .platform)
+        lookupError = try c.decodeIfPresent(String.self, forKey: .lookupError)
+        games = try c.decodeIfPresent([SearchGame].self, forKey: .games) ?? []
+        owned = try c.decodeIfPresent([OwnedCopy].self, forKey: .owned) ?? []
+    }
+}
+
+struct OwnedCopy: Codable, Identifiable {
+    var id: String
+    var title: String
+    var platform: String
 }
 
 enum RFC3339 {

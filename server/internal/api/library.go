@@ -25,6 +25,7 @@ type writeBody struct {
 	Completeness   *string `json:"completeness"`
 	Notes          *string `json:"notes"`
 	IGDBGameID     *int64  `json:"igdb_game_id"`
+	Barcode        *string `json:"barcode"`
 	CreatedAt      *string `json:"created_at"`
 	UpdatedAt      *string `json:"updated_at"`
 }
@@ -151,6 +152,14 @@ func (h *Handler) createLibrary(w http.ResponseWriter, r *http.Request) {
 	if body.Notes != nil {
 		item.Notes = *body.Notes
 	}
+	if body.Barcode != nil {
+		code, err := parseBarcodePtr(body.Barcode)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		item.Barcode = code
+	}
 	if body.Completeness != nil {
 		item.Completeness = model.NormalizeCompleteness(*body.Completeness)
 	}
@@ -184,6 +193,9 @@ func (h *Handler) createLibrary(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if out.Barcode != nil && out.IGDBGameID != nil {
+		_ = h.store.RememberBarcodeGame(r.Context(), *out.Barcode, *out.IGDBGameID)
 	}
 	writeJSON(w, http.StatusCreated, out)
 }
@@ -282,6 +294,14 @@ func (h *Handler) patchLibrary(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Notes != nil {
 		item.Notes = *body.Notes
+	}
+	if body.Barcode != nil {
+		code, err := parseBarcodePtr(body.Barcode)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		item.Barcode = code
 	}
 	if item.Title == "" || item.Platform == "" {
 		writeErr(w, http.StatusBadRequest, "title and platform are required")

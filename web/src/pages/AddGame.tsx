@@ -1,11 +1,12 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import BarcodeScanner, { canScanBarcode } from "../BarcodeScanner";
 import type { Completeness, Region, SearchGame } from "../types";
 
 export default function AddGame({ igdb }: { igdb: boolean }) {
-  const [tab, setTab] = useState<"search" | "manual">(igdb ? "search" : "manual");
+  const [tab, setTab] = useState<"search" | "barcode" | "manual">(igdb ? "search" : "barcode");
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <Link to="/" className="text-sm text-[#9aa3b2] hover:text-[#e2b14a]">
@@ -21,6 +22,12 @@ export default function AddGame({ igdb }: { igdb: boolean }) {
           Search IGDB
         </button>
         <button
+          onClick={() => setTab("barcode")}
+          className={`rounded-lg px-3 py-1.5 ${tab === "barcode" ? "bg-[#e2b14a] text-[#111]" : "border border-[#2a2e38] text-[#9aa3b2]"}`}
+        >
+          Barcode
+        </button>
+        <button
           onClick={() => setTab("manual")}
           className={`rounded-lg px-3 py-1.5 ${tab === "manual" ? "bg-[#e2b14a] text-[#111]" : "border border-[#2a2e38] text-[#9aa3b2]"}`}
         >
@@ -29,10 +36,13 @@ export default function AddGame({ igdb }: { igdb: boolean }) {
       </div>
       {!igdb && (
         <p className="mt-3 text-sm text-[#9aa3b2]">
-          Set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET on the server to enable search.
+          Set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET on the server to enable search. Barcode lookup still
+          fills a product title when the catalog knows the UPC.
         </p>
       )}
-      <div className="mt-6">{tab === "search" && igdb ? <SearchAdd /> : <ManualAdd />}</div>
+      <div className="mt-6">
+        {tab === "search" && igdb ? <SearchAdd /> : tab === "barcode" ? <BarcodeAdd igdb={igdb} /> : <ManualAdd />}
+      </div>
     </div>
   );
 }
@@ -136,14 +146,152 @@ function SearchAdd() {
   );
 }
 
+function hintPlatformId(game: SearchGame, hint?: string, preferred?: number) {
+  if (preferred && game.platforms.some((p) => p.id === preferred)) return preferred;
+  if (hint) {
+    const h = hint.toLowerCase();
+    const match = game.platforms.find((p) => p.name.toLowerCase().includes(h) || h.includes(p.name.toLowerCase()));
+    if (match) return match.id;
+  }
+  return game.platforms[0]?.id ?? 0;
+}
+
+function BarcodeAdd({ igdb }: { igdb: boolean }) {
+  const [q, setQ] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [lookup, setLookup] = useState("");
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const result = useQuery({
+    queryKey: ["barcode", lookup],
+    queryFn: () => api.searchBarcode(lookup),
+    enabled: !!lookup,
+  });
+  const [picked, setPicked] = useState<SearchGame | null>(null);
+
+  useEffect(() => {
+    const games = result.data?.games ?? [];
+    setPicked(games[0] ?? null);
+  }, [result.data]);
+
+  function submit(code: string) {
+    const digits = code.replace(/\D/g, "");
+    if (!digits) return;
+    setQ(digits);
+    setLookup(digits);
+    setPicked(null);
+    setScanning(false);
+  }
+
+  return (
+    <div>
+      <form
+        className="flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit(q);
+        }}
+      >
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="UPC / EAN"
+          inputMode="numeric"
+          className="min-w-48 flex-1 rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm outline-none focus:border-[#e2b14a]"
+        />
+        {canScanBarcode() && (
+          <button
+            type="button"
+            onClick={() => setScanning(true)}
+            className="rounded-lg border border-[#2a2e38] px-4 py-2 text-sm text-[#9aa3b2]"
+          >
+            Camera
+          </button>
+        )}
+        <button className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111]">Lookup</button>
+      </form>
+      {scanning && <BarcodeScanner onCode={submit} onClose={() => setScanning(false)} />}
+      {result.isLoading && <p className="mt-4 text-[#9aa3b2]">Looking up barcode…</p>}
+      {result.isError && <p className="mt-4 text-red-400">Barcode lookup failed.</p>}
+      {result.data?.lookup_error && <p className="mt-4 text-sm text-[#9aa3b2]">{result.data.lookup_error}</p>}
+      {result.data && (
+        <div className="mt-4 space-y-2 text-sm text-[#9aa3b2]">
+          {result.data.product_title && <p>Catalog: {result.data.product_title}</p>}
+          {result.data.owned.length > 0 && (
+            <p>
+              Already on the shelf: {result.data.owned.map((o) => `${o.title} (${o.platform})`).join(", ")}. You can
+              still add another copy.
+            </p>
+          )}
+          {result.isSuccess && !picked && (result.data.games ?? []).length === 0 && (
+            <p>
+              {result.data.product_title
+                ? "No IGDB match. Add it manually — the barcode will be saved."
+                : "No product found for that barcode. Search by title or add it manually."}
+            </p>
+          )}
+        </div>
+      )}
+      {!picked && (
+        <ul className="mt-4 space-y-2">
+          {(result.data?.games ?? []).map((g) => (
+            <li key={g.igdb_id}>
+              <button
+                onClick={() => setPicked(g)}
+                className="flex w-full items-center gap-3 rounded-lg border border-[#2a2e38] bg-[#16181f] p-2 text-left hover:border-[#e2b14a]"
+              >
+                <div className="h-16 w-12 overflow-hidden rounded bg-[#0e0f12]">
+                  {g.cover_url ? <img src={g.cover_url} alt="" className="h-full w-full object-cover" /> : null}
+                </div>
+                <div>
+                  <div className="font-medium text-[#e8eaef]">{g.name}</div>
+                  <div className="text-xs text-[#9aa3b2]">{g.platforms.map((p) => p.name).join(", ") || "No platforms"}</div>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {picked && (
+        <ConfirmIGDB
+          key={picked.igdb_id}
+          game={picked}
+          preferredPlatformId={hintPlatformId(picked, result.data?.platform_hint)}
+          barcode={result.data?.barcode}
+          onCancel={() => setPicked(null)}
+          onAdded={async (id) => {
+            await qc.invalidateQueries({ queryKey: ["library"] });
+            nav(`/game/${id}`);
+          }}
+        />
+      )}
+      {result.data && !picked && (result.data.games ?? []).length === 0 && (
+        <div className="mt-6">
+          <ManualAdd
+            key={result.data.barcode}
+            initialTitle={result.data.query || result.data.product_title}
+            initialPlatform={result.data.platform || ""}
+            initialBarcode={result.data.barcode}
+          />
+        </div>
+      )}
+      {!igdb && lookup && !result.data?.product_title && (
+        <p className="mt-3 text-sm text-[#9aa3b2]">IGDB is not configured, so only the product title can be filled.</p>
+      )}
+    </div>
+  );
+}
+
 function ConfirmIGDB({
   game,
   preferredPlatformId,
+  barcode,
   onCancel,
   onAdded,
 }: {
   game: SearchGame;
   preferredPlatformId?: number;
+  barcode?: string;
   onCancel: () => void;
   onAdded: (id: string) => void;
 }) {
@@ -159,9 +307,10 @@ function ConfirmIGDB({
     mutationFn: () =>
       api.create({
         igdb_game_id: game.igdb_id,
-        igdb_platform_id: platformId || undefined,
+        igdb_platform_id: platformId || game.platforms[0]?.id || undefined,
         region: region || undefined,
         completeness,
+        barcode: barcode || undefined,
       }),
     onSuccess: (item) => onAdded(item.id),
   });
@@ -220,7 +369,7 @@ function ConfirmIGDB({
       <div className="mt-4 flex gap-2">
         <button
           onClick={() => add.mutate()}
-          disabled={add.isPending || !platformId}
+          disabled={add.isPending}
           className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111]"
         >
           Add to library
@@ -233,12 +382,21 @@ function ConfirmIGDB({
   );
 }
 
-function ManualAdd() {
-  const [title, setTitle] = useState("");
-  const [platform, setPlatform] = useState("");
+function ManualAdd({
+  initialTitle = "",
+  initialPlatform = "",
+  initialBarcode = "",
+}: {
+  initialTitle?: string;
+  initialPlatform?: string;
+  initialBarcode?: string;
+}) {
+  const [title, setTitle] = useState(initialTitle);
+  const [platform, setPlatform] = useState(initialPlatform);
   const [region, setRegion] = useState("us");
   const [completeness, setCompleteness] = useState<Completeness>("unknown");
   const [notes, setNotes] = useState("");
+  const [barcode, setBarcode] = useState(initialBarcode);
   const nav = useNavigate();
   const qc = useQueryClient();
 
@@ -250,6 +408,7 @@ function ManualAdd() {
       region: region || undefined,
       completeness,
       notes,
+      barcode: barcode || undefined,
     });
     await qc.invalidateQueries({ queryKey: ["library"] });
     nav(`/game/${item.id}`);
@@ -302,6 +461,15 @@ function ManualAdd() {
           <option value="cib">CIB</option>
           <option value="new">New / sealed</option>
         </select>
+      </label>
+      <label className="block text-sm text-[#9aa3b2]">
+        Barcode
+        <input
+          value={barcode}
+          onChange={(e) => setBarcode(e.target.value)}
+          inputMode="numeric"
+          className="mt-1 w-full rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
+        />
       </label>
       <label className="block text-sm text-[#9aa3b2]">
         Notes

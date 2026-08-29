@@ -4,6 +4,7 @@ import UIKit
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var store
     @State private var showAdd = false
+    @State private var addTab = 0
     @State private var showSettings = false
     @State private var csvShare: CSVShare?
 
@@ -81,7 +82,16 @@ struct LibraryView: View {
                     .disabled(store.items.filter { ($0.deletedAt ?? "").isEmpty }.isEmpty)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAdd = true } label: { Image(systemName: "plus") }
+                    Button {
+                        addTab = 1
+                        showAdd = true
+                    } label: { Image(systemName: "barcode.viewfinder") }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        addTab = 0
+                        showAdd = true
+                    } label: { Image(systemName: "plus") }
                 }
             }
             .sheet(item: $csvShare) { share in
@@ -105,7 +115,7 @@ struct LibraryView: View {
                 .padding(.vertical, 8)
                 .background(.thinMaterial)
             }
-            .sheet(isPresented: $showAdd) { AddGameView() }
+            .sheet(isPresented: $showAdd) { AddGameView(initialTab: addTab) }
             .sheet(isPresented: $showSettings) { SettingsView() }
         }
         .preferredColorScheme(.dark)

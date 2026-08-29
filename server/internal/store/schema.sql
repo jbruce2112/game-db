@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS library_items (
     notes            TEXT NOT NULL DEFAULT '',
     igdb_game_id     INTEGER,
     cover_id         TEXT,
+    barcode          TEXT,
     created_at       TEXT NOT NULL,
     updated_at       TEXT NOT NULL,
     deleted_at       TEXT,
@@ -20,6 +21,15 @@ CREATE TABLE IF NOT EXISTS library_items (
 CREATE INDEX IF NOT EXISTS idx_library_items_sync_seq ON library_items (sync_seq);
 CREATE INDEX IF NOT EXISTS idx_library_items_platform ON library_items (platform);
 CREATE INDEX IF NOT EXISTS idx_library_items_title ON library_items (title COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS barcode_cache (
+    barcode        TEXT PRIMARY KEY NOT NULL,
+    product_title  TEXT,
+    query          TEXT,
+    source         TEXT,
+    igdb_game_id   INTEGER,
+    updated_at     TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS tokens (
     token      TEXT PRIMARY KEY NOT NULL,

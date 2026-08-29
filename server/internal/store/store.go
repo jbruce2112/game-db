@@ -43,6 +43,10 @@ func Open(dataDir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
 	}
+	if err := migrate(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
 	return &Store{DB: db, DataDir: dataDir}, nil
 }
 
@@ -369,7 +373,7 @@ func (s *Store) PlatformName(ctx context.Context, id int64) (string, error) {
 	return name, err
 }
 
-const itemCols = `id, title, platform, igdb_platform_id, region, completeness, notes, igdb_game_id, cover_id, created_at, updated_at, deleted_at, sync_seq`
+const itemCols = `id, title, platform, igdb_platform_id, region, completeness, notes, igdb_game_id, cover_id, barcode, created_at, updated_at, deleted_at, sync_seq`
 
 type scanner interface {
 	Scan(dest ...any) error
@@ -377,14 +381,14 @@ type scanner interface {
 
 func scanItem(row scanner) (model.Item, error) {
 	var (
-		it                        model.Item
-		igdbPlat, igdbGame        sql.NullInt64
-		created, upd              string
-		regionN, coverN, deletedN sql.NullString
+		it                                 model.Item
+		igdbPlat, igdbGame                 sql.NullInt64
+		created, upd                       string
+		regionN, coverN, barcodeN, deletedN sql.NullString
 	)
 	err := row.Scan(
 		&it.ID, &it.Title, &it.Platform, &igdbPlat, &regionN, &it.Completeness, &it.Notes,
-		&igdbGame, &coverN, &created, &upd, &deletedN, &it.SyncSeq,
+		&igdbGame, &coverN, &barcodeN, &created, &upd, &deletedN, &it.SyncSeq,
 	)
 	if err != nil {
 		return model.Item{}, err
@@ -404,6 +408,10 @@ func scanItem(row scanner) (model.Item, error) {
 	if coverN.Valid {
 		coverID := coverN.String
 		it.CoverID = &coverID
+	}
+	if barcodeN.Valid && barcodeN.String != "" {
+		b := barcodeN.String
+		it.Barcode = &b
 	}
 	it.CreatedAt, err = model.ParseTime(created)
 	if err != nil {
@@ -453,10 +461,11 @@ func insertItem(ctx context.Context, tx *sql.Tx, item model.Item) error {
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO library_items (
 			id, title, platform, igdb_platform_id, region, completeness, notes,
-			igdb_game_id, cover_id, created_at, updated_at, deleted_at, sync_seq
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			igdb_game_id, cover_id, barcode, created_at, updated_at, deleted_at, sync_seq
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		item.ID, item.Title, item.Platform, nullInt(item.IGDBPlatformID), nullStrPtr(item.Region),
 		item.Completeness, item.Notes, nullInt(item.IGDBGameID), nullStrPtr(item.CoverID),
+		nullStrPtr(item.Barcode),
 		model.FormatTime(item.CreatedAt), model.FormatTime(item.UpdatedAt),
 		nullTime(item.DeletedAt), item.SyncSeq,
 	)
@@ -467,10 +476,11 @@ func updateItem(ctx context.Context, tx *sql.Tx, item model.Item) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE library_items SET
 			title=?, platform=?, igdb_platform_id=?, region=?, completeness=?, notes=?,
-			igdb_game_id=?, cover_id=?, created_at=?, updated_at=?, deleted_at=?, sync_seq=?
+			igdb_game_id=?, cover_id=?, barcode=?, created_at=?, updated_at=?, deleted_at=?, sync_seq=?
 		WHERE id=?`,
 		item.Title, item.Platform, nullInt(item.IGDBPlatformID), nullStrPtr(item.Region),
 		item.Completeness, item.Notes, nullInt(item.IGDBGameID), nullStrPtr(item.CoverID),
+		nullStrPtr(item.Barcode),
 		model.FormatTime(item.CreatedAt), model.FormatTime(item.UpdatedAt),
 		nullTime(item.DeletedAt), item.SyncSeq, item.ID,
 	)

@@ -19,6 +19,7 @@ export default function GameDetail() {
   const [region, setRegion] = useState<string>("");
   const [completeness, setCompleteness] = useState<Completeness>("unknown");
   const [notes, setNotes] = useState("");
+  const [barcode, setBarcode] = useState("");
 
   useEffect(() => {
     if (!q.data) return;
@@ -27,6 +28,7 @@ export default function GameDetail() {
     setRegion(q.data.region ?? "");
     setCompleteness(q.data.completeness);
     setNotes(q.data.notes);
+    setBarcode(q.data.barcode ?? "");
   }, [q.data]);
 
   const save = useMutation({
@@ -37,6 +39,7 @@ export default function GameDetail() {
         region: region || null,
         completeness,
         notes,
+        barcode: barcode || null,
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["library"] });
@@ -105,6 +108,9 @@ export default function GameDetail() {
               <option value="cib">CIB</option>
               <option value="new">New / sealed</option>
             </select>
+          </Field>
+          <Field label="Barcode">
+            <input value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" className={inputCls} />
           </Field>
           <Field label="Notes">
             <textarea

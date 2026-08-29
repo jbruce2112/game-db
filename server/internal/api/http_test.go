@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -10,11 +11,12 @@ import (
 	"strings"
 	"testing"
 
+	"game-db/internal/barcode"
 	"game-db/internal/config"
 	"game-db/internal/store"
 )
 
-func testServer(t *testing.T) http.Handler {
+func testHandler(t *testing.T) *Handler {
 	t.Helper()
 	st, err := store.Open(t.TempDir())
 	if err != nil {
@@ -22,8 +24,12 @@ func testServer(t *testing.T) http.Handler {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	cfg := config.Config{AppPassword: "secret"}
-	h := New(cfg, st, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
-	return h.Router()
+	return New(cfg, st, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+}
+
+func testServer(t *testing.T) http.Handler {
+	t.Helper()
+	return testHandler(t).Router()
 }
 
 func TestHealth(t *testing.T) {
@@ -195,6 +201,113 @@ func TestExportCSV(t *testing.T) {
 	s := string(body)
 	if !strings.Contains(s, `"Mario, Sunshine"`) {
 		t.Fatalf("csv body: %s", s)
+	}
+}
+
+func loginToken(t *testing.T, client *http.Client, base string) string {
+	t.Helper()
+	ok, _ := json.Marshal(map[string]string{"password": "secret"})
+	res, err := client.Post(base+"/v1/auth/login", "application/json", bytes.NewReader(ok))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var login struct{ Token string }
+	if err := json.NewDecoder(res.Body).Decode(&login); err != nil {
+		t.Fatal(err)
+	}
+	if login.Token == "" {
+		t.Fatal("empty token")
+	}
+	return login.Token
+}
+
+func TestSearchBarcode(t *testing.T) {
+	h := testHandler(t)
+	h.productLookup = func(ctx context.Context, codes []string) (barcode.Product, error) {
+		return barcode.Product{Title: "Battlefield Bad Company 2 (PC DVD)", Source: "test"}, nil
+	}
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/search/barcode?q=014633190366", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 200 {
+		t.Fatalf("status %d %s", res.StatusCode, raw)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["barcode"] != "014633190366" {
+		t.Fatalf("%s", raw)
+	}
+	if got["product_title"] != "Battlefield Bad Company 2 (PC DVD)" {
+		t.Fatalf("%s", raw)
+	}
+	if got["query"] != "Battlefield Bad Company 2" {
+		t.Fatalf("query %s", raw)
+	}
+}
+
+func TestCreateStoresBarcode(t *testing.T) {
+	h := testHandler(t)
+	h.productLookup = func(context.Context, []string) (barcode.Product, error) {
+		return barcode.Product{}, nil
+	}
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+
+	create, _ := json.Marshal(map[string]string{
+		"title":    "Sunshine",
+		"platform": "GameCube",
+		"barcode":  "0 45496 59037 6",
+	})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 201 {
+		b, _ := io.ReadAll(res.Body)
+		t.Fatalf("create %d %s", res.StatusCode, b)
+	}
+	var item map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&item); err != nil {
+		t.Fatal(err)
+	}
+	if item["barcode"] != "045496590376" {
+		t.Fatalf("%v", item)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/search/barcode?q=0045496590376", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var got struct {
+		Owned []map[string]any `json:"owned"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Owned) != 1 || got.Owned[0]["title"] != "Sunshine" {
+		t.Fatalf("%v", got.Owned)
 	}
 }
 

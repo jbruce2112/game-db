@@ -18,6 +18,7 @@
 		A10000000000000000000008 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* LibraryView.swift */; };
 		A10000000000000000000009 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* GameDetailView.swift */; };
 		A1000000000000000000000A /* AddGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* AddGameView.swift */; };
+		A10000000000000000000012 /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* BarcodeScannerView.swift */; };
 		A1000000000000000000000B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* SettingsView.swift */; };
 		A1000000000000000000000C /* CoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* CoverView.swift */; };
 		A1000000000000000000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* Assets.xcassets */; };
@@ -37,6 +38,7 @@
 		B10000000000000000000008 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		B10000000000000000000009 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000A /* AddGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddGameView.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000C /* CoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				B10000000000000000000008 /* LibraryView.swift */,
 				B10000000000000000000009 /* GameDetailView.swift */,
 				B1000000000000000000000A /* AddGameView.swift */,
+				B10000000000000000000012 /* BarcodeScannerView.swift */,
 				B1000000000000000000000B /* SettingsView.swift */,
 				B1000000000000000000000C /* CoverView.swift */,
 			);
@@ -206,6 +209,7 @@
 				A10000000000000000000008 /* LibraryView.swift in Sources */,
 				A10000000000000000000009 /* GameDetailView.swift in Sources */,
 				A1000000000000000000000A /* AddGameView.swift in Sources */,
+				A10000000000000000000012 /* BarcodeScannerView.swift in Sources */,
 				A1000000000000000000000B /* SettingsView.swift in Sources */,
 				A1000000000000000000000C /* CoverView.swift in Sources */,
 			);
@@ -261,6 +265,7 @@
 				INFOPLIST_FILE = GameDB/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "game-db";
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan the barcode on a game box to add it to your library.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -291,6 +296,7 @@
 				INFOPLIST_FILE = GameDB/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "game-db";
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan the barcode on a game box to add it to your library.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

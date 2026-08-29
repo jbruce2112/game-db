@@ -233,6 +233,42 @@ paths:
                     items: { $ref: "#/components/schemas/SearchGame" }
         "503":
           description: IGDB not configured
+  /v1/search/barcode:
+    get:
+      summary: Resolve a UPC/EAN to IGDB search results
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+          description: UPC-A, EAN-13, or EAN-8 digits
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barcode: { type: string }
+                  product_title: { type: string }
+                  query: { type: string }
+                  source: { type: string }
+                  platform_hint: { type: string }
+                  lookup_error: { type: string }
+                  games:
+                    type: array
+                    items: { $ref: "#/components/schemas/SearchGame" }
+                  owned:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        title: { type: string }
+                        platform: { type: string }
+        "400":
+          $ref: "#/components/responses/Error"
   /v1/covers/{id}:
     get:
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]
@@ -293,6 +329,7 @@ components:
         igdb_game_id: { type: integer, nullable: true }
         cover_id: { type: string, format: uuid, nullable: true }
         cover_url: { type: string, nullable: true }
+        barcode: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         deleted_at: { type: string, format: date-time, nullable: true }
@@ -308,6 +345,7 @@ components:
         completeness: { type: string }
         notes: { type: string }
         igdb_game_id: { type: integer }
+        barcode: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     LibraryItemPatch:
@@ -319,6 +357,7 @@ components:
         region: { type: string, nullable: true }
         completeness: { type: string }
         notes: { type: string }
+        barcode: { type: string, nullable: true }
     Platform:
       type: object
       properties:

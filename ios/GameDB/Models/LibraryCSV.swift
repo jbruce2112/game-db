@@ -3,7 +3,7 @@ import Foundation
 enum LibraryCSV {
     static let header = [
         "id", "title", "platform", "region", "completeness", "notes",
-        "igdb_game_id", "igdb_platform_id", "created_at", "updated_at",
+        "igdb_game_id", "igdb_platform_id", "barcode", "created_at", "updated_at",
     ]
 
     static func string(from items: [LibraryItem]) -> String {
@@ -18,6 +18,7 @@ enum LibraryCSV {
                 it.notes,
                 it.igdbGameId.map(String.init) ?? "",
                 it.igdbPlatformId.map(String.init) ?? "",
+                it.barcode ?? "",
                 it.createdAt,
                 it.updatedAt,
             ]
@@ -92,6 +93,10 @@ enum LibraryCSV {
                 notes: get(row, "notes"),
                 igdbGameId: Int64(get(row, "igdb_game_id")),
                 coverId: nil,
+                barcode: {
+                    let b = get(row, "barcode").filter(\.isNumber)
+                    return b.isEmpty ? nil : b
+                }(),
                 createdAt: created.isEmpty ? now : created,
                 updatedAt: updated.isEmpty ? (created.isEmpty ? now : created) : updated,
                 deletedAt: nil,

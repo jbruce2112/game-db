@@ -2,10 +2,14 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"game-db/internal/model"
+
+	_ "modernc.org/sqlite"
 )
 
 func testStore(t *testing.T) *Store {
@@ -27,6 +31,54 @@ func item(id, title string, updated time.Time) model.Item {
 		Notes:        "",
 		CreatedAt:    updated,
 		UpdatedAt:    updated,
+	}
+}
+
+func TestMigrateAddsBarcodeColumn(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "game-db.sqlite")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE library_items (
+			id TEXT PRIMARY KEY NOT NULL,
+			title TEXT NOT NULL,
+			platform TEXT NOT NULL,
+			igdb_platform_id INTEGER,
+			region TEXT,
+			completeness TEXT NOT NULL DEFAULT 'unknown',
+			notes TEXT NOT NULL DEFAULT '',
+			igdb_game_id INTEGER,
+			cover_id TEXT,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			deleted_at TEXT,
+			sync_seq INTEGER NOT NULL DEFAULT 0
+		)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	code := "045496590376"
+	it := item("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "Zelda", time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC))
+	it.Barcode = &code
+	if _, err := s.Insert(context.Background(), it); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Get(context.Background(), it.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Barcode == nil || *got.Barcode != code {
+		t.Fatalf("%+v", got)
 	}
 }
 

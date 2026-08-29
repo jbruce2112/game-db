@@ -12,6 +12,7 @@ export type LibraryItem = {
   igdb_game_id: number | null;
   cover_id: string | null;
   cover_url: string | null;
+  barcode: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -32,4 +33,22 @@ export type SearchGame = {
   cover_url: string | null;
   first_release_date: string | null;
   platforms: Platform[];
+};
+
+export type OwnedCopy = {
+  id: string;
+  title: string;
+  platform: string;
+};
+
+export type BarcodeSearch = {
+  barcode: string;
+  product_title: string;
+  query: string;
+  source: string;
+  platform_hint?: string;
+  platform?: string;
+  lookup_error?: string;
+  games: SearchGame[];
+  owned: OwnedCopy[];
 };

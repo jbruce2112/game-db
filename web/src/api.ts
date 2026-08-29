@@ -1,4 +1,4 @@
-import type { LibraryItem, Platform, SearchGame } from "./types";
+import type { BarcodeSearch, LibraryItem, Platform, SearchGame } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -86,6 +86,8 @@ export const api = {
     if (platform) qs.set("platform", String(platform));
     return req<{ games: SearchGame[] }>(`/v1/search/games?${qs}`);
   },
+  searchBarcode: (q: string) =>
+    req<BarcodeSearch>(`/v1/search/barcode?${new URLSearchParams({ q })}`),
 };
 
 export function coverSrc(item: { cover_url?: string | null }) {

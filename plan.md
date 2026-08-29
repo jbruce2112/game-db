@@ -83,11 +83,12 @@ One row per physical copy. Duplicates allowed (two copies of the same title).
 | `notes` | Free text |
 | `igdb_game_id` | Nullable, for later re-fetch — not unique |
 | `cover_id` | Nullable, file on the server volume |
+| `barcode` | Nullable UPC/EAN on this copy |
 | `created_at` / `updated_at` | UTC RFC3339 |
 | `deleted_at` | Tombstone; rows are hidden, not hard-deleted |
 | `dirty` | Client-only: needs push |
 
-v1 does **not** include barcode, location, purchase price/store/date, condition grade, genres on the row, or quantity>1 as a field (two copies = two rows).
+v1 does **not** include location, purchase price/store/date, condition grade, genres on the row, or quantity>1 as a field (two copies = two rows).
 
 ### `igdb_games` / `igdb_platforms` / `covers`
 
@@ -144,6 +145,7 @@ All JSON, prefix `/v1`. OpenAPI file at repo root is the contract (`openapi.yaml
 | POST | `/v1/sync` | Bidirectional sync |
 | GET | `/v1/platforms` | Curated IGDB consoles/handhelds (+ PC) |
 | GET | `/v1/search/games?q=&platform=` | Proxied IGDB search |
+| GET | `/v1/search/barcode?q=` | UPC/EAN → product title + IGDB search |
 | GET | `/v1/covers/{id}` | Cached image bytes |
 
 Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may use GET for a one-shot refresh.
@@ -156,7 +158,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Filter by platform; search the local library by title
 - Game detail: cover, title, platform, region, completeness, notes, dates
 - Edit those fields; delete (with confirm)
-- Add: search IGDB → pick game → pick platform → optional region/completeness → save
+- Add: search IGDB, scan/type a box barcode, or enter manually → pick platform → optional region/completeness → save
 - Manual add when IGDB misses (or iOS has no server)
 - Empty states and a visible sync/offline indicator on iOS
 
@@ -172,16 +174,15 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Explicitly not v1** (backlog)
 
-- Barcode / camera scan
 - PriceCharting / values
 - Wishlist, multiple collections, hardware, amiibo
-- Custom fields, CSV import/export, stats charts
+- Custom fields, stats charts
 - Custom cover upload, back-of-box photos
 - Multi-user, owner field, sharing
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export and barcode scan are the first two follow-ups after v1 feels solid.
+CSV export/import and barcode scan are implemented. PriceCharting is the next named follow-up.
 
 ## Repo layout (monorepo)
 

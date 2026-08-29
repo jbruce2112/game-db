@@ -42,6 +42,33 @@ func TestParseRoundTrip(t *testing.T) {
 	if got[0].IGDBGameID == nil || *got[0].IGDBGameID != 1075 {
 		t.Fatalf("igdb %+v", got[0].IGDBGameID)
 	}
+	if got[0].Barcode != nil {
+		t.Fatalf("barcode %+v", got[0].Barcode)
+	}
+}
+
+func TestParseBarcodeColumn(t *testing.T) {
+	code := "045496590376"
+	src := []model.Item{{
+		ID:           "c8b62233-31b7-46a2-94d1-5cd4460437f7",
+		Title:        "Sunshine",
+		Platform:     "Nintendo GameCube",
+		Completeness: "unknown",
+		Barcode:      &code,
+		CreatedAt:    time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:    time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC),
+	}}
+	raw, err := LibraryCSV(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := ParseLibraryCSV(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].Barcode == nil || *got[0].Barcode != code {
+		t.Fatalf("barcode %+v", got[0].Barcode)
+	}
 }
 
 func TestParseRequiresTitleAndPlatform(t *testing.T) {

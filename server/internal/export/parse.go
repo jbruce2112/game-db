@@ -82,6 +82,7 @@ func ParseLibraryCSV(data []byte) ([]model.Item, error) {
 			Notes:          get("notes"),
 			IGDBGameID:     parseInt64(get("igdb_game_id")),
 			IGDBPlatformID: parseInt64(get("igdb_platform_id")),
+			Barcode:        parseBarcode(get("barcode")),
 			CreatedAt:      created,
 			UpdatedAt:      updated,
 		}
@@ -91,6 +92,24 @@ func ParseLibraryCSV(data []byte) ([]model.Item, error) {
 		return nil, fmt.Errorf("csv has no game rows")
 	}
 	return items, nil
+}
+
+func parseBarcode(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	var b strings.Builder
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	out := b.String()
+	if out == "" {
+		return nil
+	}
+	return &out
 }
 
 func parseInt64(s string) *int64 {

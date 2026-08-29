@@ -65,6 +65,9 @@ enum AppDatabase {
                 );
                 """)
         }
+        migrator.registerMigration("v2-barcode") { db in
+            try db.execute(sql: "ALTER TABLE library_items ADD COLUMN barcode TEXT")
+        }
         return migrator
     }
 }
