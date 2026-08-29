@@ -174,8 +174,9 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Explicitly not v1** (backlog)
 
-- PriceCharting / values
+- Web platform sidebar — filter the library by platform with per-platform counts (iOS later)
 - Statistics view — counts by platform, region, completeness, and similar shelf breakdowns
+- PriceCharting / values
 - Wishlist, multiple collections, hardware, amiibo
 - Custom fields
 - Custom cover upload, back-of-box photos
@@ -183,7 +184,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export/import, barcode scan, and bulk add are implemented. PriceCharting is the next named follow-up.
+CSV export/import, barcode scan, and bulk add are implemented. The web platform sidebar is the next named follow-up.
 
 ## Repo layout (monorepo)
 
