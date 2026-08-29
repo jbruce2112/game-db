@@ -14,10 +14,11 @@ struct LibraryView: View {
             Group {
                 if store.filtered.isEmpty {
                     ContentUnavailableView(
-                        "Nothing on the shelf yet",
+                        emptyTitle,
                         systemImage: "square.stack",
-                        description: Text("Add a game, even while offline.")
+                        description: Text(emptyDescription)
                     )
+                    .padding(.bottom, 88)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
@@ -42,6 +43,7 @@ struct LibraryView: View {
                             }
                         }
                         .padding()
+                        .padding(.bottom, 72)
                     }
                     .refreshable { await store.runSync() }
                 }
@@ -50,7 +52,6 @@ struct LibraryView: View {
             .navigationDestination(for: LibraryItem.self) { item in
                 GameDetailView(itemID: item.id)
             }
-            .searchable(text: $store.query, prompt: "Titles")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showSettings = true } label: {
@@ -67,7 +68,9 @@ struct LibraryView: View {
                             Button(p) { store.platformFilter = p }
                         }
                     } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        Image(systemName: store.platformFilter.isEmpty
+                              ? "line.3.horizontal.decrease.circle"
+                              : "line.3.horizontal.decrease.circle.fill")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -94,26 +97,12 @@ struct LibraryView: View {
                     } label: { Image(systemName: "plus") }
                 }
             }
+            .overlay(alignment: .bottom) {
+                FloatingSearchBar()
+                    .padding(.bottom, 10)
+            }
             .sheet(item: $csvShare) { share in
                 ShareSheet(items: [share.url])
-            }
-            .safeAreaInset(edge: .bottom) {
-                HStack {
-                    Circle()
-                        .fill(store.online ? Color.green : Color.secondary)
-                        .frame(width: 8, height: 8)
-                    Text(statusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    if !store.platformFilter.isEmpty {
-                        Button("Clear filter") { store.platformFilter = "" }
-                            .font(.caption)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.thinMaterial)
             }
             .sheet(isPresented: $showAdd) { AddGameView(initialTab: addTab) }
             .sheet(isPresented: $showSettings) { SettingsView() }
@@ -121,15 +110,113 @@ struct LibraryView: View {
         .preferredColorScheme(.dark)
     }
 
+    private var emptyTitle: String {
+        if !store.query.isEmpty || !store.platformFilter.isEmpty {
+            return "No matching games"
+        }
+        return "Nothing on the shelf yet"
+    }
+
+    private var emptyDescription: String {
+        if !store.query.isEmpty || !store.platformFilter.isEmpty {
+            return "Try a different title or clear the filter."
+        }
+        return "Add a game, even while offline."
+    }
+}
+
+private struct FloatingSearchBar: View {
+    @Environment(LibraryStore.self) private var store
+    @FocusState private var isFocused: Bool
+
+    private var expanded: Bool { isFocused || !store.query.isEmpty }
+
+    var body: some View {
+        @Bindable var store = store
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search", text: $store.query)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .focused($isFocused)
+                    .multilineTextAlignment(expanded ? .leading : .center)
+                if expanded && !store.query.isEmpty {
+                    Button {
+                        store.query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityLabel("Clear search")
+                }
+                if !expanded {
+                    statusDot
+                }
+            }
+            .padding(.horizontal, expanded ? 14 : 16)
+            .padding(.vertical, 11)
+            .libraryGlassCapsule()
+            .frame(maxWidth: expanded ? .infinity : 200)
+            .contentShape(Capsule())
+
+            if expanded {
+                Button("Cancel") {
+                    store.query = ""
+                    isFocused = false
+                }
+                .font(.body)
+                .foregroundStyle(.primary)
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+        }
+        .padding(.horizontal, expanded ? 16 : 0)
+        .frame(maxWidth: .infinity)
+        .animation(.spring(duration: 0.32, bounce: 0.12), value: expanded)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var statusDot: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 7, height: 7)
+            .opacity(0.55)
+            .padding(.leading, 2)
+            .accessibilityLabel(statusText)
+    }
+
+    private var statusColor: Color {
+        if !store.isPaired { return .secondary }
+        return store.online ? .green : .orange
+    }
+
     private var statusText: String {
         if !store.isPaired { return "Local only" }
         if store.online {
             if let last = store.lastSync {
-                return "Synced \(last.formatted(date: .omitted, time: .shortened))"
+                return "Online, last synced \(last.formatted(date: .omitted, time: .shortened))"
             }
             return "Online"
         }
         return store.syncMessage.isEmpty ? "Offline" : store.syncMessage
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func libraryGlassCapsule() -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            self
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.28), radius: 18, y: 8)
+        }
     }
 }
 

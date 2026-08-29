@@ -174,6 +174,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Explicitly not v1** (backlog)
 
+- Bulk add — next: stay in the add/scan flow and put several games on the shelf without returning to the list each time
 - PriceCharting / values
 - Wishlist, multiple collections, hardware, amiibo
 - Custom fields, stats charts
@@ -182,7 +183,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export/import and barcode scan are implemented. PriceCharting is the next named follow-up.
+CSV export/import and barcode scan are implemented. Bulk add is the next named follow-up.
 
 ## Repo layout (monorepo)
 
