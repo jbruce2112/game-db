@@ -176,8 +176,9 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 - Bulk add — next: stay in the add/scan flow and put several games on the shelf without returning to the list each time
 - PriceCharting / values
+- Statistics view — counts by platform, region, completeness, and similar shelf breakdowns
 - Wishlist, multiple collections, hardware, amiibo
-- Custom fields, stats charts
+- Custom fields
 - Custom cover upload, back-of-box photos
 - Multi-user, owner field, sharing
 - Bonjour/NAS discovery, push notifications
