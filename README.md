@@ -13,9 +13,49 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open http://localhost:8080 and sign in with `APP_PASSWORD`.
+Open http://localhost:8080 and sign in with `APP_PASSWORD`. To publish a different host port, set `HTTP_PORT` in `.env` (for example `HTTP_PORT=8078`) and recreate the container. Compose still uses port 8080 *inside* the container; `HTTP_ADDR` in `.env` is ignored by Compose.
 
-Data (SQLite + covers) lives in `./data`.
+### Other machines on the LAN
+
+This app is **not** on port 80. Other Docker apps on the same IP are often reverse-proxied at `http://192.168.1.50/` or HTTPS. Game-db is published as:
+
+`http://192.168.1.50:8080` (or `http://192.168.1.50:8078` if `HTTP_PORT=8078`).
+
+That host port is required. In the iOS app, Settings must be that full URL (no trailing path).
+
+On the server, confirm the API answers locally first (use your `HTTP_PORT`):
+
+```bash
+curl -sS http://127.0.0.1:8080/health
+# expect: {"status":"ok"}
+
+ss -tlnp | grep -E '8080|8078'
+# want: 0.0.0.0:<HTTP_PORT>  (not only 127.0.0.1)
+```
+
+If the port is only on `127.0.0.1`, Docker is publishing localhost-only (common with rootless Docker). The compose file binds `0.0.0.0:8080:8080`. Recreate:
+
+```bash
+docker compose down
+docker compose up --build
+```
+
+If it still does not load from another device, open the port on the host firewall:
+
+```bash
+sudo ufw allow 8080/tcp
+# or: sudo firewall-cmd --add-port=8080/tcp --permanent && sudo firewall-cmd --reload
+```
+
+mDNS names like `big-mama.local` often fail on iPhone; use the numeric IP.
+
+Data (SQLite + covers) lives in `./data`. Create it first if you want:
+
+```bash
+mkdir -p data/covers
+```
+
+SQLite error 14 (`unable to open database file: out of memory`) almost always means the process cannot write that folder (permissions), not RAM. The Compose image writes as root so a normal `./data` bind mount works.
 
 ## Local development
 

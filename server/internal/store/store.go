@@ -26,18 +26,24 @@ type Store struct {
 
 func Open(dataDir string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Join(dataDir, "covers"), 0o755); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create data dir %s: %w", dataDir, err)
 	}
+	probe := filepath.Join(dataDir, ".write-test")
+	if err := os.WriteFile(probe, []byte("ok"), 0o644); err != nil {
+		return nil, fmt.Errorf("data dir %s is not writable: %w", dataDir, err)
+	}
+	_ = os.Remove(probe)
+
 	dbPath := filepath.Join(dataDir, "game-db.sqlite")
-	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", filepath.ToSlash(dbPath))
+	dsn := sqliteDSN(dbPath)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open sqlite %s: %w", dbPath, err)
 	}
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		_ = db.Close()
-		return nil, err
+		return nil, fmt.Errorf("open sqlite %s: %w", dbPath, err)
 	}
 	if _, err := db.Exec(schemaSQL); err != nil {
 		_ = db.Close()
@@ -48,6 +54,15 @@ func Open(dataDir string) (*Store, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return &Store{DB: db, DataDir: dataDir}, nil
+}
+
+func sqliteDSN(dbPath string) string {
+	p := filepath.ToSlash(dbPath)
+	q := "?mode=rwc&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+	if filepath.IsAbs(dbPath) || strings.HasPrefix(p, "/") {
+		return "file://" + p + q
+	}
+	return "file:" + p + q
 }
 
 func (s *Store) Close() error {
