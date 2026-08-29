@@ -174,6 +174,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Explicitly not v1** (backlog)
 
+- Bug: missing images on web after ios app syncs to initial empty server state
 - Web platform sidebar — filter the library by platform with per-platform counts (iOS later)
 - Statistics view — counts by platform, region, completeness, and similar shelf breakdowns
 - PriceCharting / values

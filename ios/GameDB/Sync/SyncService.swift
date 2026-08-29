@@ -8,25 +8,49 @@ struct SyncResult {
 final class SyncService {
     func sync(db: DatabaseQueue, api: APIClient) async throws -> SyncResult {
         let igdb = (try? await api.me()) ?? false
-        let cursor: Int64 = try await db.read { db in
+        var cursor: Int64 = try await db.read { db in
             let row = try Row.fetchOne(db, sql: "SELECT value FROM meta WHERE key = ?", arguments: ["sync_cursor"])
             guard let row else { return 0 }
             let raw: String = row["value"]
             return Int64(raw) ?? 0
         }
-        let dirty: [LibraryItem] = try await db.read { db in
+        var outgoing: [LibraryItem] = try await db.read { db in
             try LibraryItem.filter(sql: "dirty = 1").fetchAll(db)
         }
-        let response = try await api.sync(cursor: cursor, changes: dirty)
-        // Full snapshot fills holes if the cursor skipped a seq (e.g. Super
-        // Mario Sunshine sitting at seq 4 after the client already stored cursor 6).
-        let snapshot = (try? await api.libraryItems()) ?? []
+
+        // Empty server (fresh Docker volume) + phone already synced to an old
+        // DB: locals are dirty=0 so a delta push sends nothing. Treat an empty
+        // remote shelf as first pairing and upload the whole local library.
+        let snapshotBefore = (try? await api.libraryItems()) ?? []
+        if snapshotBefore.isEmpty {
+            let locals: [LibraryItem] = try await db.read { db in
+                try LibraryItem.fetchAll(db)
+            }
+            if !locals.isEmpty {
+                outgoing = locals
+                cursor = 0
+            }
+        }
+
+        var response = try await api.sync(cursor: cursor, changes: outgoing)
+        if response.cursor < cursor, snapshotBefore.isEmpty == false {
+            // Server seq went backwards (restored/replaced DB). Full push.
+            let locals: [LibraryItem] = try await db.read { db in
+                try LibraryItem.fetchAll(db)
+            }
+            response = try await api.sync(cursor: 0, changes: locals)
+            outgoing = locals
+        }
+
+        let snapshot = (try? await api.libraryItems()) ?? snapshotBefore
+        let applied = response
+        let sent = outgoing
         try await db.write { db in
-            for var item in response.changes {
+            for var item in applied.changes {
                 item.dirty = false
                 try item.save(db)
             }
-            let pendingIDs = Set(dirty.map(\.id))
+            let pendingIDs = Set(sent.map(\.id))
             var remoteIDs = Set<String>()
             for var item in snapshot {
                 remoteIDs.insert(item.id)
@@ -36,8 +60,8 @@ final class SyncService {
                 item.dirty = false
                 try item.save(db)
             }
-            for var item in dirty {
-                if response.changes.contains(where: { $0.id == item.id }) {
+            for var item in sent {
+                if applied.changes.contains(where: { $0.id == item.id }) {
                     continue
                 }
                 item.dirty = false
@@ -58,7 +82,7 @@ final class SyncService {
             }
             try db.execute(
                 sql: "INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                arguments: ["sync_cursor", String(response.cursor)]
+                arguments: ["sync_cursor", String(applied.cursor)]
             )
         }
         return SyncResult(igdbConfigured: igdb)
