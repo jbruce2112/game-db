@@ -37,6 +37,8 @@ Web UI: http://localhost:5173
 
 ```bash
 cd server && go test ./...
+make test-stress           # concurrent CRUD, multi-device sync, CSV, barcodes
+STRESS=1 make test-stress  # 10× volume
 ```
 
 ## Barcode
