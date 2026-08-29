@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AddGameView: View {
     @Environment(LibraryStore.self) private var store
@@ -19,6 +20,9 @@ struct AddGameView: View {
     @State private var error: String?
     @State private var showScanner = false
     @State private var barcodeResult: BarcodeSearch?
+    @State private var addedCount = 0
+    @State private var lastAdded: String?
+    @State private var keepScanning = false
 
     var body: some View {
         NavigationStack {
@@ -29,6 +33,18 @@ struct AddGameView: View {
                     Text("Manual").tag(2)
                 }
                 .pickerStyle(.segmented)
+
+                if let lastAdded {
+                    Section {
+                        Label("Added \(lastAdded)", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        if addedCount > 1 {
+                            Text("\(addedCount) added this session")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
 
                 if tab == 0 {
                     searchSection
@@ -44,13 +60,14 @@ struct AddGameView: View {
             .navigationTitle("Add game")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button(addedCount > 0 ? "Done" : "Close") { dismiss() }
                 }
             }
             .onAppear { tab = initialTab }
             .sheet(isPresented: $showScanner) {
                 NavigationStack {
                     BarcodeScannerView { code in
+                        keepScanning = true
                         showScanner = false
                         barcode = digits(code)
                         Task { await lookupBarcode() }
@@ -60,7 +77,10 @@ struct AddGameView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showScanner = false }
+                            Button("Cancel") {
+                                keepScanning = false
+                                showScanner = false
+                            }
                         }
                     }
                 }
@@ -316,13 +336,13 @@ struct AddGameView: View {
             barcode: code.isEmpty ? nil : code
         )
         try? store.add(item)
-        dismiss()
+        didAdd(title)
     }
 
     private func addFromIGDB() async {
         guard let picked else { return }
         do {
-            let code = digits(barcode)
+            let code = tab == 0 ? "" : digits(barcode)
             var item = try await store.api.createFromIGDB(
                 gameId: picked.igdbId,
                 platformId: resolvedPlatformId(picked),
@@ -332,9 +352,30 @@ struct AddGameView: View {
             )
             item.dirty = false
             try store.add(item)
-            dismiss()
+            didAdd(picked.name)
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    private func didAdd(_ name: String) {
+        addedCount += 1
+        lastAdded = name
+        error = nil
+        search = ""
+        results = []
+        picked = nil
+        pickPlatform = ""
+        barcode = ""
+        barcodeResult = nil
+        title = ""
+        platform = ""
+        notes = ""
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if tab == 1, keepScanning, BarcodeScannerView.isAvailable {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                showScanner = true
+            }
         }
     }
 }

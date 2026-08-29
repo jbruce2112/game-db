@@ -1,18 +1,30 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import BarcodeScanner, { canScanBarcode } from "../BarcodeScanner";
 import type { Completeness, Region, SearchGame } from "../types";
 
 export default function AddGame({ igdb }: { igdb: boolean }) {
   const [tab, setTab] = useState<"search" | "barcode" | "manual">(igdb ? "search" : "barcode");
+  const [session, setSession] = useState({ count: 0, last: "" });
+
+  function noteAdded(name: string) {
+    setSession((s) => ({ count: s.count + 1, last: name }));
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <Link to="/" className="text-sm text-[#9aa3b2] hover:text-[#e2b14a]">
         ← Library
       </Link>
       <h1 className="mt-4 text-2xl font-semibold">Add game</h1>
+      {session.last && (
+        <p className="mt-3 text-sm text-[#e2b14a]">
+          Added {session.last}
+          {session.count > 1 ? ` · ${session.count} this session` : ""}
+        </p>
+      )}
       <div className="mt-4 flex gap-2 text-sm">
         <button
           disabled={!igdb}
@@ -41,17 +53,22 @@ export default function AddGame({ igdb }: { igdb: boolean }) {
         </p>
       )}
       <div className="mt-6">
-        {tab === "search" && igdb ? <SearchAdd /> : tab === "barcode" ? <BarcodeAdd igdb={igdb} /> : <ManualAdd />}
+        {tab === "search" && igdb ? (
+          <SearchAdd onAdded={noteAdded} />
+        ) : tab === "barcode" ? (
+          <BarcodeAdd igdb={igdb} onAdded={noteAdded} />
+        ) : (
+          <ManualAdd onAdded={noteAdded} />
+        )}
       </div>
     </div>
   );
 }
 
-function SearchAdd() {
+function SearchAdd({ onAdded }: { onAdded: (name: string) => void }) {
   const [q, setQ] = useState("");
   const [platformId, setPlatformId] = useState(0);
   const [submitted, setSubmitted] = useState<{ q: string; platformId: number } | null>(null);
-  const nav = useNavigate();
   const qc = useQueryClient();
   const platforms = useQuery({
     queryKey: ["platforms"],
@@ -136,9 +153,12 @@ function SearchAdd() {
           game={picked}
           preferredPlatformId={submitted?.platformId || undefined}
           onCancel={() => setPicked(null)}
-          onAdded={async (id) => {
+          onAdded={async (name) => {
             await qc.invalidateQueries({ queryKey: ["library"] });
-            nav(`/game/${id}`);
+            setQ("");
+            setSubmitted(null);
+            setPicked(null);
+            onAdded(name);
           }}
         />
       )}
@@ -156,11 +176,11 @@ function hintPlatformId(game: SearchGame, hint?: string, preferred?: number) {
   return game.platforms[0]?.id ?? 0;
 }
 
-function BarcodeAdd({ igdb }: { igdb: boolean }) {
+function BarcodeAdd({ igdb, onAdded }: { igdb: boolean; onAdded: (name: string) => void }) {
   const [q, setQ] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [usedCamera, setUsedCamera] = useState(false);
   const [lookup, setLookup] = useState("");
-  const nav = useNavigate();
   const qc = useQueryClient();
   const result = useQuery({
     queryKey: ["barcode", lookup],
@@ -174,13 +194,25 @@ function BarcodeAdd({ igdb }: { igdb: boolean }) {
     setPicked(games[0] ?? null);
   }, [result.data]);
 
-  function submit(code: string) {
+  function submit(code: string, fromCamera = false) {
     const digits = code.replace(/\D/g, "");
     if (!digits) return;
+    if (fromCamera) setUsedCamera(true);
     setQ(digits);
     setLookup(digits);
     setPicked(null);
     setScanning(false);
+  }
+
+  async function afterAdded(name: string) {
+    await qc.invalidateQueries({ queryKey: ["library"] });
+    setQ("");
+    setLookup("");
+    setPicked(null);
+    onAdded(name);
+    if (usedCamera && canScanBarcode()) {
+      setScanning(true);
+    }
   }
 
   return (
@@ -210,7 +242,15 @@ function BarcodeAdd({ igdb }: { igdb: boolean }) {
         )}
         <button className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111]">Lookup</button>
       </form>
-      {scanning && <BarcodeScanner onCode={submit} onClose={() => setScanning(false)} />}
+      {scanning && (
+        <BarcodeScanner
+          onCode={(code) => submit(code, true)}
+          onClose={() => {
+            setUsedCamera(false);
+            setScanning(false);
+          }}
+        />
+      )}
       {result.isLoading && <p className="mt-4 text-[#9aa3b2]">Looking up barcode…</p>}
       {result.isError && <p className="mt-4 text-red-400">Barcode lookup failed.</p>}
       {result.data?.lookup_error && <p className="mt-4 text-sm text-[#9aa3b2]">{result.data.lookup_error}</p>}
@@ -259,10 +299,7 @@ function BarcodeAdd({ igdb }: { igdb: boolean }) {
           preferredPlatformId={hintPlatformId(picked, result.data?.platform_hint)}
           barcode={result.data?.barcode}
           onCancel={() => setPicked(null)}
-          onAdded={async (id) => {
-            await qc.invalidateQueries({ queryKey: ["library"] });
-            nav(`/game/${id}`);
-          }}
+          onAdded={afterAdded}
         />
       )}
       {result.data && !picked && (result.data.games ?? []).length === 0 && (
@@ -272,6 +309,7 @@ function BarcodeAdd({ igdb }: { igdb: boolean }) {
             initialTitle={result.data.query || result.data.product_title}
             initialPlatform={result.data.platform || ""}
             initialBarcode={result.data.barcode}
+            onAdded={afterAdded}
           />
         </div>
       )}
@@ -293,7 +331,7 @@ function ConfirmIGDB({
   preferredPlatformId?: number;
   barcode?: string;
   onCancel: () => void;
-  onAdded: (id: string) => void;
+  onAdded: (name: string) => void;
 }) {
   const [platformId, setPlatformId] = useState(() => {
     if (preferredPlatformId && game.platforms.some((p) => p.id === preferredPlatformId)) {
@@ -312,7 +350,7 @@ function ConfirmIGDB({
         completeness,
         barcode: barcode || undefined,
       }),
-    onSuccess: (item) => onAdded(item.id),
+    onSuccess: () => onAdded(game.name),
   });
 
   return (
@@ -386,10 +424,12 @@ function ManualAdd({
   initialTitle = "",
   initialPlatform = "",
   initialBarcode = "",
+  onAdded,
 }: {
   initialTitle?: string;
   initialPlatform?: string;
   initialBarcode?: string;
+  onAdded: (name: string) => void;
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [platform, setPlatform] = useState(initialPlatform);
@@ -397,12 +437,11 @@ function ManualAdd({
   const [completeness, setCompleteness] = useState<Completeness>("unknown");
   const [notes, setNotes] = useState("");
   const [barcode, setBarcode] = useState(initialBarcode);
-  const nav = useNavigate();
   const qc = useQueryClient();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const item = await api.create({
+    await api.create({
       title,
       platform,
       region: region || undefined,
@@ -411,7 +450,12 @@ function ManualAdd({
       barcode: barcode || undefined,
     });
     await qc.invalidateQueries({ queryKey: ["library"] });
-    nav(`/game/${item.id}`);
+    const name = title;
+    setTitle("");
+    setPlatform("");
+    setNotes("");
+    setBarcode("");
+    onAdded(name);
   }
 
   return (
