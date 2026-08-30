@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>game-db</string>
+	<string>Game Library</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Scan the barcode on a game box to add it to your library.</string>
 	<key>NSAppTransportSecurity</key>

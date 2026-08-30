@@ -35,7 +35,7 @@ struct LibraryView: View {
                         .accessibilityLabel("Statistics")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Library") { compactColumn = .detail }
+                        Button("Game Library") { compactColumn = .detail }
                     }
                 }
         } detail: {
@@ -100,7 +100,7 @@ struct LibraryView: View {
                     .refreshable { await store.runSync() }
                 }
             }
-            .navigationTitle(store.platformFilter.isEmpty ? "Library" : store.platformFilter)
+            .navigationTitle(store.platformFilter.isEmpty ? "Game Library" : store.platformFilter)
             .navigationDestination(for: LibraryItem.self) { item in
                 GameDetailView(itemID: item.id)
             }
