@@ -16,7 +16,7 @@ export default function AddGame({ igdb }: { igdb: boolean }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <Link to="/" className="text-sm text-[#9aa3b2] hover:text-[#e2b14a]">
-        ← Library
+        ← Game Library
       </Link>
       <h1 className="mt-4 text-2xl font-semibold">Add game</h1>
       {session.last && (

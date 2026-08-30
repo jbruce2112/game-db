@@ -47,7 +47,7 @@ export default function Library({ igdb }: { igdb: boolean }) {
     <div className="mx-auto max-w-7xl px-4 py-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Library</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Game Library</h1>
           <p className="text-sm text-[#9aa3b2]">
             {items.length} game{items.length === 1 ? "" : "s"}
             {platform ? ` · ${platform}` : ""}

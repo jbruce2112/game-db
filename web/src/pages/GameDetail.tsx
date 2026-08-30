@@ -72,7 +72,7 @@ export default function GameDetail() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <Link to="/" className="text-sm text-[#9aa3b2] hover:text-[#e2b14a]">
-        ← Library
+        ← Game Library
       </Link>
       <div className="mt-6 grid gap-8 sm:grid-cols-[180px_1fr]">
         <div className="aspect-[3/4] overflow-hidden rounded-lg border border-[#2a2e38] bg-[#16181f]">
