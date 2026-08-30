@@ -10,6 +10,7 @@ struct LibraryView: View {
     @State private var compactColumn: NavigationSplitViewColumn = .detail
     @State private var pendingDelete: LibraryItem?
     @State private var openFromMenu: LibraryItem?
+    @State private var showStats = false
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
@@ -22,6 +23,16 @@ struct LibraryView: View {
                         Button { showSettings = true } label: {
                             Image(systemName: store.isPaired ? "externaldrive.badge.checkmark" : "externaldrive")
                         }
+                        .accessibilityLabel("Settings")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showStats = true
+                            compactColumn = .detail
+                        } label: {
+                            Image(systemName: "chart.bar")
+                        }
+                        .accessibilityLabel("Statistics")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Library") { compactColumn = .detail }
@@ -85,11 +96,21 @@ struct LibraryView: View {
             .navigationDestination(item: $openFromMenu) { item in
                 GameDetailView(itemID: item.id)
             }
+            .navigationDestination(isPresented: $showStats) {
+                StatsView()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showSettings = true } label: {
                         Image(systemName: store.isPaired ? "externaldrive.badge.checkmark" : "externaldrive")
                     }
+                    .accessibilityLabel("Settings")
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showStats = true } label: {
+                        Image(systemName: "chart.bar")
+                    }
+                    .accessibilityLabel("Statistics")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {

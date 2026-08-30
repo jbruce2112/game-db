@@ -60,6 +60,12 @@ export default function Library({ igdb }: { igdb: boolean }) {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link
+            to="/stats"
+            className="rounded-lg border border-[#2a2e38] px-3 py-2 text-sm text-[#9aa3b2]"
+          >
+            Stats
+          </Link>
           <button
             onClick={() => api.exportCSV({ q, platform, sort })}
             disabled={items.length === 0}

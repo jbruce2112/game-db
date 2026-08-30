@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Library from "./pages/Library";
 import GameDetail from "./pages/GameDetail";
 import AddGame from "./pages/AddGame";
+import Stats from "./pages/Stats";
 
 export default function App() {
   const me = useQuery({
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/" element={<Library igdb={me.data.igdb_configured} />} />
         <Route path="/add" element={<AddGame igdb={me.data.igdb_configured} />} />
         <Route path="/game/:id" element={<GameDetail />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

@@ -21,9 +21,12 @@
 		A10000000000000000000012 /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* BarcodeScannerView.swift */; };
 		A1000000000000000000000B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* SettingsView.swift */; };
 		A1000000000000000000000C /* CoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* CoverView.swift */; };
+		A10000000000000000000013 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* StatsView.swift */; };
+		A10000000000000000000014 /* ShelfStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* ShelfStats.swift */; };
 		A1000000000000000000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* Assets.xcassets */; };
 		A1000000000000000000000E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C10000000000000000000002 /* GRDB */; };
 		A10000000000000000000020 /* GamePeekPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* GamePeekPreviewTests.swift */; };
+		A10000000000000000000022 /* ShelfStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* ShelfStatsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,9 +55,12 @@
 		B10000000000000000000012 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000C /* CoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverView.swift; sourceTree = "<group>"; };
+		B10000000000000000000013 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		B10000000000000000000014 /* ShelfStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfStats.swift; sourceTree = "<group>"; };
 		B1000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000000000000000000000F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10000000000000000000020 /* GamePeekPreviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePeekPreviewTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000022 /* ShelfStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfStatsTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000021 /* GameDBTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GameDBTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -114,6 +120,7 @@
 			children = (
 				B10000000000000000000002 /* LibraryItem.swift */,
 				B10000000000000000000011 /* LibraryCSV.swift */,
+				B10000000000000000000014 /* ShelfStats.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -146,6 +153,7 @@
 				B10000000000000000000012 /* BarcodeScannerView.swift */,
 				B1000000000000000000000B /* SettingsView.swift */,
 				B1000000000000000000000C /* CoverView.swift */,
+				B10000000000000000000013 /* StatsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -154,6 +162,7 @@
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000020 /* GamePeekPreviewTests.swift */,
+				B10000000000000000000022 /* ShelfStatsTests.swift */,
 			);
 			path = GameDBTests;
 			sourceTree = "<group>";
@@ -274,6 +283,8 @@
 				A10000000000000000000012 /* BarcodeScannerView.swift in Sources */,
 				A1000000000000000000000B /* SettingsView.swift in Sources */,
 				A1000000000000000000000C /* CoverView.swift in Sources */,
+				A10000000000000000000013 /* StatsView.swift in Sources */,
+				A10000000000000000000014 /* ShelfStats.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -282,6 +293,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000020 /* GamePeekPreviewTests.swift in Sources */,
+				A10000000000000000000022 /* ShelfStatsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -162,6 +162,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Add: search IGDB, scan/type a box barcode, or enter manually → pick platform → optional region/completeness → save
 - Manual add when IGDB misses (or iOS has no server)
 - Empty states and a visible sync/offline indicator on iOS
+- Statistics: totals plus breakdowns by platform, region, and completeness (cover and barcode coverage)
 
 **Web-only**
 
@@ -177,7 +178,6 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Explicitly not v1** (backlog)
 
-- Statistics view — counts by platform, region, completeness, and similar shelf breakdowns
 - PriceCharting / values
 - Wishlist, multiple collections, hardware, amiibo
 - Custom fields
@@ -186,7 +186,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export/import, barcode scan, bulk add, IGDB cover backfill, and the web + iOS platform sidebars, and eBay/PriceCharting values are implemented. Statistics is the next named follow-up.
+CSV export/import, barcode scan, bulk add, IGDB cover backfill, the web + iOS platform sidebars, and statistics are implemented. PriceCharting / values is the next named follow-up.
 
 ## Repo layout (monorepo)
 

@@ -46,6 +46,10 @@ final class LibraryStore {
         items.reduce(0) { $0 + (($1.deletedAt ?? "").isEmpty ? 1 : 0) }
     }
 
+    var stats: ShelfStats {
+        ShelfStats(items: items)
+    }
+
     var platformCounts: [(name: String, count: Int)] {
         var map: [String: Int] = [:]
         for item in items where (item.deletedAt ?? "").isEmpty {
