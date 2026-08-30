@@ -10,6 +10,7 @@ Game metadata and cover art come from [IGDB](https://www.igdb.com/).
 cp .env.example .env
 # set APP_PASSWORD
 # set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET (https://api-docs.igdb.com/#getting-started)
+# optional: EBAY_CLIENT_ID + EBAY_CLIENT_SECRET for asking prices (https://developer.ebay.com)
 docker compose up --build
 ```
 
@@ -110,6 +111,10 @@ The process still prefers real environment variables over the file. Docker Compo
 | `COOKIE_SECURE` | no | `0` | Set `1` behind HTTPS |
 | `IGDB_CLIENT_ID` | for search | | Twitch/IGDB client id |
 | `IGDB_CLIENT_SECRET` | for search | | Twitch/IGDB secret |
+| `EBAY_CLIENT_ID` | for values | | eBay App ID (free developer key) |
+| `EBAY_CLIENT_SECRET` | for values | | eBay Cert ID |
+| `EBAY_MARKETPLACE` | no | `EBAY_US` | eBay marketplace for asking prices |
+| `PRICECHARTING_TOKEN` | optional | | Paid PriceCharting token (used if eBay is unset) |
 
 ## Layout
 

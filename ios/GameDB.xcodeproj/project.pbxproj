@@ -10,6 +10,7 @@
 		A10000000000000000000001 /* GameDBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* GameDBApp.swift */; };
 		A10000000000000000000002 /* LibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* LibraryItem.swift */; };
 		A10000000000000000000011 /* LibraryCSV.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* LibraryCSV.swift */; };
+		A10000000000000000000015 /* PriceQuote.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* PriceQuote.swift */; };
 		A10000000000000000000003 /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* Database.swift */; };
 		A10000000000000000000004 /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* LibraryStore.swift */; };
 		A10000000000000000000005 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* KeychainStore.swift */; };
@@ -44,6 +45,7 @@
 		B10000000000000000000001 /* GameDBApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDBApp.swift; sourceTree = "<group>"; };
 		B10000000000000000000002 /* LibraryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItem.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* LibraryCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryCSV.swift; sourceTree = "<group>"; };
+		B10000000000000000000015 /* PriceQuote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceQuote.swift; sourceTree = "<group>"; };
 		B10000000000000000000003 /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
 		B10000000000000000000004 /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000005 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				B10000000000000000000002 /* LibraryItem.swift */,
 				B10000000000000000000011 /* LibraryCSV.swift */,
 				B10000000000000000000014 /* ShelfStats.swift */,
+				B10000000000000000000015 /* PriceQuote.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -272,6 +275,7 @@
 				A10000000000000000000001 /* GameDBApp.swift in Sources */,
 				A10000000000000000000002 /* LibraryItem.swift in Sources */,
 				A10000000000000000000011 /* LibraryCSV.swift in Sources */,
+				A10000000000000000000015 /* PriceQuote.swift in Sources */,
 				A10000000000000000000003 /* Database.swift in Sources */,
 				A10000000000000000000004 /* LibraryStore.swift in Sources */,
 				A10000000000000000000005 /* KeychainStore.swift in Sources */,

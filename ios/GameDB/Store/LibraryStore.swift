@@ -15,6 +15,8 @@ final class LibraryStore {
     var online: Bool = false
     var syncMessage: String = ""
     var igdbConfigured: Bool = false
+    var pricechartingConfigured: Bool = false
+    var quotes: [String: PriceQuote] = [:]
     var errorMessage: String?
 
     @ObservationIgnored private var db: DatabaseQueue!
@@ -58,6 +60,18 @@ final class LibraryStore {
         return map.keys.sorted().map { (name: $0, count: map[$0] ?? 0) }
     }
 
+    var shelfValueCents: Int? {
+        var sum = 0
+        var n = 0
+        for item in filtered {
+            if let cents = quotes[item.id]?.cents(for: item.completeness) {
+                sum += cents
+                n += 1
+            }
+        }
+        return n > 0 ? sum : nil
+    }
+
     var isPaired: Bool { KeychainStore.token() != nil && !serverURL.isEmpty }
 
     func bootstrap() async {
@@ -76,6 +90,25 @@ final class LibraryStore {
     func reload() throws {
         items = try db.read { db in
             try LibraryItem.fetchAll(db)
+        }
+        quotes = try db.read { db in
+            let rows = try Row.fetchAll(db, sql: "SELECT * FROM price_quotes")
+            var map: [String: PriceQuote] = [:]
+            for row in rows {
+                let id: String = row["item_id"]
+                map[id] = PriceQuote(
+                    pcId: row["pc_id"],
+                    productName: row["product_name"],
+                    consoleName: row["console_name"],
+                    url: row["url"],
+                    source: row["source"],
+                    listings: row["listings"],
+                    looseCents: row["loose_cents"],
+                    cibCents: row["cib_cents"],
+                    newCents: row["new_cents"]
+                )
+            }
+            return map
         }
     }
 
@@ -160,6 +193,7 @@ final class LibraryStore {
         UserDefaults.standard.removeObject(forKey: "lastSync")
         online = false
         igdbConfigured = false
+        pricechartingConfigured = false
         syncMessage = "Local only"
     }
 
@@ -168,12 +202,14 @@ final class LibraryStore {
         do {
             let result = try await sync.sync(db: db, api: api)
             igdbConfigured = result.igdbConfigured
+            pricechartingConfigured = result.pricechartingConfigured
             online = true
             lastSync = Date()
             UserDefaults.standard.set(lastSync, forKey: "lastSync")
             syncMessage = "Synced"
             try reload()
             await downloadCovers()
+            await downloadPrices()
             try reload()
         } catch APIError.unauthorized {
             KeychainStore.deleteToken()
@@ -213,6 +249,38 @@ final class LibraryStore {
         try? data.write(to: AppDatabase.coverURL(id: coverId), options: .atomic)
         coverCache[coverId] = img
         return img
+    }
+
+    private func downloadPrices() async {
+        guard isPaired else { return }
+        let remote = (try? await api.libraryItems()) ?? []
+        guard let db else { return }
+        do {
+            try await db.write { db in
+                for item in remote {
+                    guard let q = item.value else { continue }
+                    try db.execute(sql: """
+                        INSERT INTO price_quotes (item_id, pc_id, product_name, console_name, url, source, listings, loose_cents, cib_cents, new_cents)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(item_id) DO UPDATE SET
+                            pc_id=excluded.pc_id,
+                            product_name=excluded.product_name,
+                            console_name=excluded.console_name,
+                            url=excluded.url,
+                            source=excluded.source,
+                            listings=excluded.listings,
+                            loose_cents=excluded.loose_cents,
+                            cib_cents=excluded.cib_cents,
+                            new_cents=excluded.new_cents
+                        """, arguments: [
+                        item.id, q.pcId, q.productName, q.consoleName, q.url,
+                        q.source, q.listings, q.looseCents, q.cibCents, q.newCents,
+                    ])
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func downloadCovers() async {

@@ -62,10 +62,21 @@ struct LibraryView: View {
                     .padding(.bottom, 88)
                 } else {
                     ScrollView {
+                        if let cents = store.shelfValueCents {
+                            Text("Shelf \(PriceQuote.usd(cents))")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal)
+                                .padding(.top, 8)
+                        }
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
                             ForEach(store.filtered) { item in
                                 NavigationLink(value: item) {
-                                    GameGridCell(item: item)
+                                    GameGridCell(
+                                        item: item,
+                                        price: store.quotes[item.id]?.cents(for: item.completeness).map(PriceQuote.usd)
+                                    )
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu {
@@ -184,6 +195,7 @@ struct LibraryView: View {
 
 private struct GameGridCell: View {
     var item: LibraryItem
+    var price: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -199,6 +211,12 @@ private struct GameGridCell: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+            if let price {
+                Text(price)
+                    .font(.caption2)
+                    .foregroundStyle(.yellow)
+                    .lineLimit(1)
+            }
         }
     }
 }

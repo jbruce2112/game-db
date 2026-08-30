@@ -27,7 +27,9 @@ func (h *Handler) sync(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.attachValues(r.Context(), res.Changes)
 	h.KickCoverBackfill()
+	h.KickPriceBackfill()
 	writeJSON(w, http.StatusOK, res)
 }
 

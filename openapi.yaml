@@ -58,6 +58,7 @@ paths:
                 type: object
                 properties:
                   igdb_configured: { type: boolean }
+                  pricecharting_configured: { type: boolean }
   /v1/library:
     get:
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]
@@ -344,6 +345,8 @@ components:
         cover_id: { type: string, format: uuid, nullable: true }
         cover_url: { type: string, nullable: true }
         barcode: { type: string, nullable: true }
+        value:
+          $ref: "#/components/schemas/PriceValue"
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         deleted_at: { type: string, format: date-time, nullable: true }
@@ -372,6 +375,18 @@ components:
         completeness: { type: string }
         notes: { type: string }
         barcode: { type: string, nullable: true }
+    PriceValue:
+      type: object
+      properties:
+        pc_id: { type: string }
+        product_name: { type: string }
+        console_name: { type: string }
+        url: { type: string }
+        source: { type: string }
+        listings: { type: integer }
+        loose_cents: { type: integer, nullable: true }
+        cib_cents: { type: integer, nullable: true }
+        new_cents: { type: integer, nullable: true }
     Platform:
       type: object
       properties:

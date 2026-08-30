@@ -42,7 +42,9 @@ func (h *Handler) listLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.attachValues(r.Context(), items)
 	h.KickCoverBackfill()
+	h.KickPriceBackfill()
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
@@ -211,6 +213,7 @@ func (h *Handler) getLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.ensurePrice(r.Context(), &item)
 	writeJSON(w, http.StatusOK, item)
 }
 
@@ -294,6 +297,7 @@ func (h *Handler) createLibrary(w http.ResponseWriter, r *http.Request) {
 	if out.Barcode != nil && out.IGDBGameID != nil {
 		_ = h.store.RememberBarcodeGame(r.Context(), *out.Barcode, *out.IGDBGameID)
 	}
+	h.ensurePrice(r.Context(), &out)
 	writeJSON(w, http.StatusCreated, out)
 }
 
@@ -413,6 +417,7 @@ func (h *Handler) patchLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.KickPriceBackfill()
 	writeJSON(w, http.StatusOK, out)
 }
 

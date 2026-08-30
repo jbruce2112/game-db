@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { api, coverSrc } from "../api";
+import { api, coverSrc, formatUSD, valueCents } from "../api";
 import type { LibraryItem } from "../types";
 
-export default function Library({ igdb }: { igdb: boolean }) {
+export default function Library({ igdb, prices = false }: { igdb: boolean; prices?: boolean }) {
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("title");
@@ -17,10 +17,12 @@ export default function Library({ igdb }: { igdb: boolean }) {
   const lib = useQuery({
     queryKey: ["library", sort],
     queryFn: () => api.library({ sort }),
-    refetchInterval: (q) => {
-      const items = q.state.data?.items ?? [];
-      const pending = items.filter((item) => !item.cover_url && !item.igdb_game_id).length;
-      return pending > 0 ? 4000 : false;
+    refetchInterval: (query) => {
+      const items = query.state.data?.items ?? [];
+      const pendingCovers = items.filter((item) => !item.cover_url && !item.igdb_game_id).length;
+      if (pendingCovers > 0) return 4000;
+      if (prices && items.length > 0 && items.some((item) => !item.value)) return 10_000;
+      return false;
     },
   });
 
@@ -42,6 +44,19 @@ export default function Library({ igdb }: { igdb: boolean }) {
     });
   }, [allItems, platform, q]);
 
+  const shelfValue = useMemo(() => {
+    let sum = 0;
+    let n = 0;
+    for (const item of items) {
+      const cents = valueCents(item);
+      if (cents != null) {
+        sum += cents;
+        n++;
+      }
+    }
+    return n > 0 ? sum : null;
+  }, [items]);
+
   async function logout() {
     await api.logout();
     await qc.invalidateQueries({ queryKey: ["me"] });
@@ -56,6 +71,7 @@ export default function Library({ igdb }: { igdb: boolean }) {
           <p className="text-sm text-[#9aa3b2]">
             {items.length} game{items.length === 1 ? "" : "s"}
             {platform ? ` · ${platform}` : ""}
+            {shelfValue != null ? ` · ${formatUSD(shelfValue)}` : ""}
             {!igdb && " · IGDB not configured"}
           </p>
         </div>
@@ -202,6 +218,7 @@ export default function Library({ igdb }: { igdb: boolean }) {
                         {item.platform}
                         {item.region ? ` · ${item.region.toUpperCase()}` : ""}
                         {` · ${item.completeness}`}
+                        {formatUSD(valueCents(item)) ? ` · ${formatUSD(valueCents(item))}` : ""}
                       </div>
                     </div>
                   </Link>
@@ -213,7 +230,7 @@ export default function Library({ igdb }: { igdb: boolean }) {
       </div>
 
       <p className="mt-12 text-center text-xs text-[#9aa3b2]">
-        Game data from IGDB.com
+        Game data from IGDB.com. Asking prices from eBay when configured.
       </p>
     </div>
   );
@@ -288,6 +305,9 @@ function CoverCard({ item }: { item: LibraryItem }) {
         {item.title}
       </div>
       <div className="truncate text-xs text-[#9aa3b2]">{item.platform}</div>
+      {formatUSD(valueCents(item)) && (
+        <div className="truncate text-xs text-[#e2b14a]">{formatUSD(valueCents(item))}</div>
+      )}
     </Link>
   );
 }
