@@ -39,7 +39,19 @@ final class LibraryStore {
     }
 
     var platforms: [String] {
-        Array(Set(items.filter { ($0.deletedAt ?? "").isEmpty }.map(\.platform))).sorted()
+        platformCounts.map(\.name)
+    }
+
+    var shelfCount: Int {
+        items.reduce(0) { $0 + (($1.deletedAt ?? "").isEmpty ? 1 : 0) }
+    }
+
+    var platformCounts: [(name: String, count: Int)] {
+        var map: [String: Int] = [:]
+        for item in items where (item.deletedAt ?? "").isEmpty {
+            map[item.platform, default: 0] += 1
+        }
+        return map.keys.sorted().map { (name: $0, count: map[$0] ?? 0) }
     }
 
     var isPaired: Bool { KeychainStore.token() != nil && !serverURL.isEmpty }

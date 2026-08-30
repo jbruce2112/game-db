@@ -7,9 +7,37 @@ struct LibraryView: View {
     @State private var addTab = 0
     @State private var showSettings = false
     @State private var csvShare: CSVShare?
+    @State private var compactColumn: NavigationSplitViewColumn = .detail
 
     var body: some View {
-        @Bindable var store = store
+        NavigationSplitView(preferredCompactColumn: $compactColumn) {
+            PlatformSidebar {
+                compactColumn = .detail
+            }
+                .navigationTitle("Platforms")
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showSettings = true } label: {
+                            Image(systemName: store.isPaired ? "externaldrive.badge.checkmark" : "externaldrive")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Library") { compactColumn = .detail }
+                    }
+                }
+        } detail: {
+            libraryStack
+        }
+        .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
+        .preferredColorScheme(.dark)
+        .sheet(item: $csvShare) { share in
+            ShareSheet(items: [share.url])
+        }
+        .sheet(isPresented: $showAdd) { AddGameView(initialTab: addTab) }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+    }
+
+    private var libraryStack: some View {
         NavigationStack {
             Group {
                 if store.filtered.isEmpty {
@@ -48,7 +76,7 @@ struct LibraryView: View {
                     .refreshable { await store.runSync() }
                 }
             }
-            .navigationTitle("Library")
+            .navigationTitle(store.platformFilter.isEmpty ? "Library" : store.platformFilter)
             .navigationDestination(for: LibraryItem.self) { item in
                 GameDetailView(itemID: item.id)
             }
@@ -62,15 +90,8 @@ struct LibraryView: View {
                     Menu {
                         Button("Title") { store.sort = "title" }
                         Button("Date added") { store.sort = "added" }
-                        Divider()
-                        Button("All platforms") { store.platformFilter = "" }
-                        ForEach(store.platforms, id: \.self) { p in
-                            Button(p) { store.platformFilter = p }
-                        }
                     } label: {
-                        Image(systemName: store.platformFilter.isEmpty
-                              ? "line.3.horizontal.decrease.circle"
-                              : "line.3.horizontal.decrease.circle.fill")
+                        Image(systemName: "arrow.up.arrow.down")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -101,13 +122,7 @@ struct LibraryView: View {
                 FloatingSearchBar()
                     .padding(.bottom, 10)
             }
-            .sheet(item: $csvShare) { share in
-                ShareSheet(items: [share.url])
-            }
-            .sheet(isPresented: $showAdd) { AddGameView(initialTab: addTab) }
-            .sheet(isPresented: $showSettings) { SettingsView() }
         }
-        .preferredColorScheme(.dark)
     }
 
     private var emptyTitle: String {
@@ -122,6 +137,41 @@ struct LibraryView: View {
             return "Try a different title or clear the filter."
         }
         return "Add a game, even while offline."
+    }
+}
+
+private struct PlatformSidebar: View {
+    @Environment(LibraryStore.self) private var store
+    var onPick: () -> Void
+
+    var body: some View {
+        List {
+            platformRow(label: "All games", count: store.shelfCount, id: "")
+            ForEach(store.platformCounts, id: \.name) { row in
+                platformRow(label: row.name, count: row.count, id: row.name)
+            }
+        }
+        .listStyle(.sidebar)
+    }
+
+    private func platformRow(label: String, count: Int, id: String) -> some View {
+        let selected = store.platformFilter == id
+        return Button {
+            store.platformFilter = id
+            onPick()
+        } label: {
+            HStack {
+                Text(label)
+                    .foregroundStyle(selected ? Color(red: 0.89, green: 0.69, blue: 0.29) : .primary)
+                    .lineLimit(1)
+                Spacer()
+                Text("\(count)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(selected ? Color(red: 0.89, green: 0.69, blue: 0.29) : .secondary)
+            }
+        }
+        .listRowBackground(selected ? Color(red: 0.89, green: 0.69, blue: 0.29).opacity(0.16) : Color.clear)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

@@ -173,6 +173,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 - Settings: server URL, password (login only, not stored), connection status, last sync time, “forget server” (drops the Keychain token)
 - Local SQLite as the working copy at all times
+- Platform sidebar: filter the library by console with per-platform counts
 
 **Explicitly not v1** (backlog)
 
@@ -185,7 +186,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export/import, barcode scan, bulk add, IGDB cover backfill, and the web platform sidebar are implemented. Statistics is the next named follow-up. iOS platform filter comes later.
+CSV export/import, barcode scan, bulk add, IGDB cover backfill, and the web + iOS platform sidebars, and eBay/PriceCharting values are implemented. Statistics is the next named follow-up.
 
 ## Repo layout (monorepo)
 
