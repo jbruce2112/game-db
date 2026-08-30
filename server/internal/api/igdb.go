@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -9,32 +10,35 @@ import (
 	"game-db/internal/store"
 )
 
+func (h *Handler) refreshPlatformsIfStale(ctx context.Context) {
+	if h.igdb == nil || !h.cfg.IGDBConfigured() {
+		return
+	}
+	stale, err := h.store.PlatformsStale(ctx, 24*time.Hour)
+	if err != nil || !stale {
+		return
+	}
+	plats, err := h.igdb.Platforms(ctx)
+	if err != nil {
+		h.log.Warn("igdb platforms", "err", err)
+		return
+	}
+	mapped := make([]store.Platform, 0, len(plats))
+	for _, p := range plats {
+		mapped = append(mapped, store.Platform{
+			ID: p.ID, Name: p.Name, Slug: p.Slug, Abbreviation: p.Abbreviation,
+		})
+	}
+	if err := h.store.UpsertPlatforms(ctx, mapped); err != nil {
+		h.log.Warn("upsert platforms", "err", err)
+	}
+}
+
 func (h *Handler) platforms(w http.ResponseWriter, r *http.Request) {
 	if !h.requireIGDB(w) {
 		return
 	}
-	stale, err := h.store.PlatformsStale(r.Context(), 24*time.Hour)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if stale {
-		plats, err := h.igdb.Platforms(r.Context())
-		if err != nil {
-			writeErr(w, http.StatusBadGateway, err.Error())
-			return
-		}
-		mapped := make([]store.Platform, 0, len(plats))
-		for _, p := range plats {
-			mapped = append(mapped, store.Platform{
-				ID: p.ID, Name: p.Name, Slug: p.Slug, Abbreviation: p.Abbreviation,
-			})
-		}
-		if err := h.store.UpsertPlatforms(r.Context(), mapped); err != nil {
-			writeErr(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-	}
+	h.refreshPlatformsIfStale(r.Context())
 	list, err := h.store.ListPlatforms(r.Context())
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

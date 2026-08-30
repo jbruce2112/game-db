@@ -329,6 +329,27 @@ func (s *Store) CoverExists(ctx context.Context, id *string) bool {
 	return err == nil && !st.IsDir()
 }
 
+func (s *Store) LinkIGDB(ctx context.Context, itemID string, gameID int64, platformID *int64) error {
+	if itemID == "" || gameID == 0 {
+		return nil
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	seq, err := nextSeq(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE library_items SET igdb_game_id = ?, igdb_platform_id = COALESCE(?, igdb_platform_id), sync_seq = ?
+		WHERE id = ?`, gameID, nullInt(platformID), seq, itemID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) SetCoverID(ctx context.Context, itemID, coverID string) error {
 	if itemID == "" || coverID == "" {
 		return nil

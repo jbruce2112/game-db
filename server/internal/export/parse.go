@@ -29,8 +29,22 @@ func ParseLibraryCSV(data []byte) ([]model.Item, error) {
 	for i, h := range records[0] {
 		idx[strings.ToLower(strings.TrimSpace(h))] = i
 	}
+	getNamed := func(rec []string, keys ...string) string {
+		for _, key := range keys {
+			i, ok := idx[key]
+			if !ok || i >= len(rec) {
+				continue
+			}
+			if v := strings.TrimSpace(rec[i]); v != "" {
+				return v
+			}
+		}
+		return ""
+	}
 	if _, ok := idx["title"]; !ok {
-		return nil, fmt.Errorf("missing title column")
+		if _, ok := idx["name"]; !ok {
+			return nil, fmt.Errorf("missing title column")
+		}
 	}
 	if _, ok := idx["platform"]; !ok {
 		return nil, fmt.Errorf("missing platform column")
@@ -41,22 +55,15 @@ func ParseLibraryCSV(data []byte) ([]model.Item, error) {
 	items := make([]model.Item, 0, len(records)-1)
 	for n, rec := range records[1:] {
 		row := n + 2
-		get := func(key string) string {
-			i, ok := idx[key]
-			if !ok || i >= len(rec) {
-				return ""
-			}
-			return strings.TrimSpace(rec[i])
-		}
-		title := get("title")
-		platform := get("platform")
-		if title == "" && platform == "" && get("id") == "" {
+		title := getNamed(rec, "title", "name")
+		platform := getNamed(rec, "platform")
+		if title == "" && platform == "" && getNamed(rec, "id") == "" {
 			continue
 		}
 		if title == "" || platform == "" {
 			return nil, fmt.Errorf("row %d: title and platform are required", row)
 		}
-		id := strings.ToLower(get("id"))
+		id := strings.ToLower(getNamed(rec, "id"))
 		if !validUUID(id) {
 			id = newUUID()
 		}
@@ -66,23 +73,23 @@ func ParseLibraryCSV(data []byte) ([]model.Item, error) {
 		seen[id] = struct{}{}
 
 		created := now
-		if t, err := model.ParseTime(get("created_at")); err == nil && !t.IsZero() {
+		if t, ok := parseFlexibleTime(getNamed(rec, "created_at", "added date", "date added")); ok {
 			created = t
 		}
 		updated := created
-		if t, err := model.ParseTime(get("updated_at")); err == nil && !t.IsZero() {
+		if t, ok := parseFlexibleTime(getNamed(rec, "updated_at")); ok {
 			updated = t
 		}
 		item := model.Item{
 			ID:             id,
 			Title:          title,
 			Platform:       platform,
-			Region:         model.NormalizeRegion(get("region")),
-			Completeness:   model.NormalizeCompleteness(get("completeness")),
-			Notes:          get("notes"),
-			IGDBGameID:     parseInt64(get("igdb_game_id")),
-			IGDBPlatformID: parseInt64(get("igdb_platform_id")),
-			Barcode:        parseBarcode(get("barcode")),
+			Region:         model.NormalizeRegion(getNamed(rec, "region")),
+			Completeness:   model.NormalizeCompleteness(getNamed(rec, "completeness", "complete")),
+			Notes:          getNamed(rec, "notes"),
+			IGDBGameID:     parseInt64(getNamed(rec, "igdb_game_id")),
+			IGDBPlatformID: parseInt64(getNamed(rec, "igdb_platform_id")),
+			Barcode:        parseBarcode(getNamed(rec, "barcode", "upc", "ean")),
 			CreatedAt:      created,
 			UpdatedAt:      updated,
 		}
@@ -92,6 +99,29 @@ func ParseLibraryCSV(data []byte) ([]model.Item, error) {
 		return nil, fmt.Errorf("csv has no game rows")
 	}
 	return items, nil
+}
+
+func parseFlexibleTime(s string) (time.Time, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, false
+	}
+	if t, err := model.ParseTime(s); err == nil && !t.IsZero() {
+		return t, true
+	}
+	for _, layout := range []string{
+		"Jan 02, 2006",
+		"Jan 2, 2006",
+		"January 2, 2006",
+		"2006-01-02",
+		"01/02/2006",
+		"1/2/2006",
+	} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return model.TimeUTC(t), true
+		}
+	}
+	return time.Time{}, false
 }
 
 func parseBarcode(s string) *string {

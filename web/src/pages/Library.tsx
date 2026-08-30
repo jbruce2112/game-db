@@ -17,6 +17,11 @@ export default function Library({ igdb }: { igdb: boolean }) {
   const lib = useQuery({
     queryKey: ["library", sort],
     queryFn: () => api.library({ sort }),
+    refetchInterval: (q) => {
+      const items = q.state.data?.items ?? [];
+      const pending = items.filter((item) => !item.cover_url && !item.igdb_game_id).length;
+      return pending > 0 ? 4000 : false;
+    },
   });
 
   const allItems = lib.data?.items ?? [];

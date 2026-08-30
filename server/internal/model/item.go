@@ -40,8 +40,21 @@ func NormalizeCompleteness(s string) string {
 func NormalizeRegion(s string) *string {
 	s = strings.ToLower(strings.TrimSpace(s))
 	switch s {
-	case "us", "eu", "jp", "au", "other":
-		return &s
+	case "us", "usa", "united states", "ntsc", "ntsc-u", "ntscu":
+		v := "us"
+		return &v
+	case "eu", "europe", "pal", "uk", "united kingdom":
+		v := "eu"
+		return &v
+	case "jp", "japan", "ntsc-j", "ntscj":
+		v := "jp"
+		return &v
+	case "au", "australia":
+		v := "au"
+		return &v
+	case "other", "all", "world", "worldwide":
+		v := "other"
+		return &v
 	default:
 		return nil
 	}

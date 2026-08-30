@@ -40,28 +40,37 @@ func (h *Handler) KickCoverBackfill() {
 	}
 	go func() {
 		defer h.coverBackfillBusy.Store(false)
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
 		defer cancel()
 		h.backfillMissingCovers(ctx)
 	}()
 }
 
 func (h *Handler) backfillMissingCovers(ctx context.Context) {
+	h.refreshPlatformsIfStale(ctx)
+	plats, _ := h.store.ListPlatforms(ctx)
+	igdbPlats := toIGDBPlatforms(plats)
+
 	items, err := h.store.List(ctx, store.ListFilter{})
 	if err != nil {
 		h.log.Error("cover backfill list", "err", err)
 		return
 	}
-	missing, noIGDB, fetched := 0, 0, 0
+	missing, noIGDB, matched, fetched := 0, 0, 0, 0
 	for i := range items {
 		if ctx.Err() != nil {
-			h.log.Warn("cover backfill cancelled", "fetched", fetched)
+			h.log.Warn("cover backfill cancelled", "fetched", fetched, "matched", matched)
 			return
 		}
 		if h.store.CoverExists(ctx, items[i].CoverID) {
 			continue
 		}
 		missing++
+		if items[i].IGDBGameID == nil {
+			if h.matchLibraryItem(ctx, &items[i], igdbPlats) {
+				matched++
+			}
+		}
 		if items[i].IGDBGameID == nil {
 			noIGDB++
 			continue
@@ -70,6 +79,9 @@ func (h *Handler) backfillMissingCovers(ctx context.Context) {
 		if h.store.CoverExists(ctx, items[i].CoverID) {
 			fetched++
 		}
+		if (matched+fetched)%25 == 0 && (matched+fetched) > 0 {
+			h.log.Info("cover backfill progress", "matched", matched, "fetched", fetched, "left", missing-fetched)
+		}
 	}
-	h.log.Info("cover backfill", "items", len(items), "missing", missing, "no_igdb_id", noIGDB, "fetched", fetched)
+	h.log.Info("cover backfill", "items", len(items), "missing", missing, "matched", matched, "no_igdb_id", noIGDB, "fetched", fetched)
 }

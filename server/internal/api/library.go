@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"game-db/internal/export"
+	"game-db/internal/igdb"
 	"game-db/internal/model"
 	"game-db/internal/store"
 )
@@ -132,16 +133,28 @@ func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if h.igdb != nil && h.cfg.IGDBConfigured() {
-		for i := range items {
-			h.attachCoverFromIGDBCtx(r.Context(), &items[i])
-		}
-	}
+	h.assignImportPlatforms(r.Context(), items)
 	if err := h.store.ReplaceAll(r.Context(), items); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.KickCoverBackfill()
 	writeJSON(w, http.StatusOK, map[string]any{"imported": len(items)})
+}
+
+func (h *Handler) assignImportPlatforms(ctx context.Context, items []model.Item) {
+	h.refreshPlatformsIfStale(ctx)
+	plats, err := h.store.ListPlatforms(ctx)
+	if err != nil {
+		return
+	}
+	igdbPlats := toIGDBPlatforms(plats)
+	for i := range items {
+		if items[i].IGDBPlatformID != nil {
+			continue
+		}
+		items[i].IGDBPlatformID = igdb.MatchPlatformID(items[i].Platform, igdbPlats)
+	}
 }
 
 func (h *Handler) attachCoverFromIGDBCtx(ctx context.Context, item *model.Item) {

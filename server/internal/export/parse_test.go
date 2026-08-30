@@ -71,6 +71,35 @@ func TestParseBarcodeColumn(t *testing.T) {
 	}
 }
 
+func TestParseCLZExport(t *testing.T) {
+	raw := []byte(`Platform,Title,"Release Date",Publisher,Developer,Genre,"Added Date",Barcode,Region
+"PlayStation 4","Shin Megami Tensei III Nocturne HD Remaster","May 25, 2021",Atlus,Atlus,RPG,"Aug 29, 2026",730865220366,USA
+"PlayStation 5","Tetris Effect: Connected","Nov 17, 2023","Limited Run Games","Enhance Games",Puzzle,"Aug 30, 2026",4570101050335,Japan
+`)
+	got, err := ParseLibraryCSV(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len %d", len(got))
+	}
+	if got[0].Title != "Shin Megami Tensei III Nocturne HD Remaster" || got[0].Platform != "PlayStation 4" {
+		t.Fatalf("%+v", got[0])
+	}
+	if got[0].Region == nil || *got[0].Region != "us" {
+		t.Fatalf("region %+v", got[0].Region)
+	}
+	if got[0].Barcode == nil || *got[0].Barcode != "730865220366" {
+		t.Fatalf("barcode %+v", got[0].Barcode)
+	}
+	if got[1].Region == nil || *got[1].Region != "jp" {
+		t.Fatalf("jp region %+v", got[1].Region)
+	}
+	if got[0].CreatedAt.IsZero() || got[0].CreatedAt.Year() != 2026 {
+		t.Fatalf("added date %v", got[0].CreatedAt)
+	}
+}
+
 func TestParseRequiresTitleAndPlatform(t *testing.T) {
 	_, err := ParseLibraryCSV([]byte("title,notes\nOnlyTitle,x\n"))
 	if err == nil || !strings.Contains(err.Error(), "platform") {
