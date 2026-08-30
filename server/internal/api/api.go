@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"game-db/internal/barcode"
@@ -27,12 +29,14 @@ import (
 const cookieName = "game_db_session"
 
 type Handler struct {
-	cfg           config.Config
-	store         *store.Store
-	igdb          *igdb.Client
-	log           *slog.Logger
-	frontend      fs.FS
-	productLookup func(ctx context.Context, codes []string) (barcode.Product, error)
+	cfg               config.Config
+	store             *store.Store
+	igdb              *igdb.Client
+	log               *slog.Logger
+	frontend          fs.FS
+	productLookup     func(ctx context.Context, codes []string) (barcode.Product, error)
+	coverBackfillBusy atomic.Bool
+	coverInflight     sync.Map
 }
 
 func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, frontend fs.FS) *Handler {
@@ -60,6 +64,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("GET /v1/search/games", h.auth(h.searchGames))
 	mux.HandleFunc("GET /v1/search/barcode", h.auth(h.searchBarcode))
 	mux.HandleFunc("GET /v1/covers/{id}", h.auth(h.cover))
+	mux.HandleFunc("GET /v1/library/{id}/cover", h.auth(h.libraryCover))
 
 	mux.HandleFunc("GET /{path...}", h.spa)
 

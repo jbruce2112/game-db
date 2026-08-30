@@ -212,3 +212,42 @@ func TestCRUD(t *testing.T) {
 		t.Fatalf("got %s", got.Title)
 	}
 }
+
+func TestAttachCoverURLFallsBackToOnDemand(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC)
+	igdbID := int64(42)
+	it := item("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "Zelda", now)
+	it.IGDBGameID = &igdbID
+	got, err := s.Insert(ctx, it)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CoverURL == nil || *got.CoverURL != "/v1/library/"+it.ID+"/cover" {
+		t.Fatalf("cover url %+v", got.CoverURL)
+	}
+
+	updatedAt := got.UpdatedAt
+	seq := got.SyncSeq
+	coverID := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	if err := s.SetCoverID(ctx, it.ID, coverID); err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.Get(ctx, it.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.CoverID == nil || *after.CoverID != coverID {
+		t.Fatalf("cover id %+v", after.CoverID)
+	}
+	if !after.UpdatedAt.Equal(updatedAt) {
+		t.Fatalf("updated_at changed %s -> %s", updatedAt, after.UpdatedAt)
+	}
+	if after.SyncSeq <= seq {
+		t.Fatalf("sync_seq %d -> %d", seq, after.SyncSeq)
+	}
+	if after.CoverURL == nil || *after.CoverURL != "/v1/library/"+it.ID+"/cover" {
+		t.Fatalf("still on-demand until file exists, got %+v", after.CoverURL)
+	}
+}

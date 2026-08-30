@@ -57,6 +57,9 @@ final class SyncService {
                 if pendingIDs.contains(item.id) {
                     continue
                 }
+                if item.coverId == nil, let existing = try LibraryItem.fetchOne(db, key: item.id), existing.coverId != nil {
+                    item.coverId = existing.coverId
+                }
                 item.dirty = false
                 try item.save(db)
             }

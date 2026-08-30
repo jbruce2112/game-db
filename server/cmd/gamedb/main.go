@@ -50,6 +50,7 @@ func main() {
 	}
 
 	h := api.New(cfg, st, ig, log, loadFrontend(log))
+	h.KickCoverBackfill()
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           h.Router(),

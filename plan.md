@@ -109,7 +109,7 @@ Single-user, few devices, rare concurrent edits → **state-based last-write-win
    - Server assigns/increments `sync_seq` on every accepted write.
    - Response: `{ cursor, changes: [...] }` — all rows with `sync_seq >` the request cursor, minus the ones the client just sent if unchanged.
 5. Client upserts the returned rows, clears `dirty` on acknowledged ids, stores the new cursor.
-6. Covers are not in the sync payload. After metadata sync, iOS GETs missing `/v1/covers/{id}` when online.
+6. Covers are not in the sync payload. The server downloads missing covers from IGDB (`GET /v1/library/{id}/cover` on demand, plus a background backfill). iOS only GETs `/v1/covers/{id}` for its local cache.
 
 **Known v1 limitation:** LWW is **record-level**. Editing notes on the phone and title on the web at the same time keeps one whole row. Fine for one person; field-level merge is a later upgrade.
 
@@ -147,6 +147,7 @@ All JSON, prefix `/v1`. OpenAPI file at repo root is the contract (`openapi.yaml
 | GET | `/v1/search/games?q=&platform=` | Proxied IGDB search |
 | GET | `/v1/search/barcode?q=` | UPC/EAN → product title + IGDB search |
 | GET | `/v1/covers/{id}` | Cached image bytes |
+| GET | `/v1/library/{id}/cover` | Cached cover, or re-download from IGDB |
 
 Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may use GET for a one-shot refresh.
 

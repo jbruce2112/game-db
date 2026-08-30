@@ -115,7 +115,12 @@ func (s *Store) List(ctx context.Context, f ListFilter) ([]model.Item, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanItems(rows)
+	items, err := scanItems(rows)
+	if err != nil {
+		return nil, err
+	}
+	s.attachCoverURLs(ctx, items)
+	return items, nil
 }
 
 func (s *Store) Get(ctx context.Context, id string) (model.Item, error) {
@@ -124,6 +129,7 @@ func (s *Store) Get(ctx context.Context, id string) (model.Item, error) {
 	if err != nil {
 		return model.Item{}, err
 	}
+	s.attachCoverURL(ctx, &item)
 	return item, nil
 }
 
@@ -162,7 +168,7 @@ func (s *Store) Insert(ctx context.Context, item model.Item) (model.Item, error)
 	if err := tx.Commit(); err != nil {
 		return model.Item{}, err
 	}
-	item.CoverURL = model.CoverURL(item.CoverID)
+	s.attachCoverURL(ctx, &item)
 	return item, nil
 }
 
@@ -183,7 +189,7 @@ func (s *Store) Replace(ctx context.Context, item model.Item) (model.Item, error
 	if err := tx.Commit(); err != nil {
 		return model.Item{}, err
 	}
-	item.CoverURL = model.CoverURL(item.CoverID)
+	s.attachCoverURL(ctx, &item)
 	return item, nil
 }
 
@@ -211,7 +217,6 @@ func (s *Store) Sync(ctx context.Context, cursor int64, incoming []model.Item, n
 		if item.Region != nil {
 			item.Region = model.NormalizeRegion(*item.Region)
 		}
-
 		existing, err := getItemTx(ctx, tx, item.ID)
 		if err == sql.ErrNoRows {
 			seq, err := nextSeq(ctx, tx)
@@ -276,16 +281,18 @@ func (s *Store) Sync(ctx context.Context, cursor int64, incoming []model.Item, n
 	if err := tx.Commit(); err != nil {
 		return SyncResult{}, err
 	}
-	for i := range out {
-		out[i].CoverURL = model.CoverURL(out[i].CoverID)
-	}
+	s.attachCoverURLs(ctx, out)
 	return SyncResult{Cursor: maxSeq, Changes: out}, nil
 }
 
 func (s *Store) SaveCover(ctx context.Context, id, igdbImageID, contentType, filename string) error {
 	_, err := s.DB.ExecContext(ctx, `
 		INSERT INTO covers (id, igdb_image_id, content_type, filename, created_at)
-		VALUES (?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			igdb_image_id=excluded.igdb_image_id,
+			content_type=excluded.content_type,
+			filename=excluded.filename`,
 		id, nullStr(igdbImageID), contentType, filename, model.FormatTime(time.Now()))
 	return err
 }
@@ -298,6 +305,63 @@ func (s *Store) GetCover(ctx context.Context, id string) (contentType, absPath s
 		return "", "", err
 	}
 	return contentType, filepath.Join(s.DataDir, "covers", filename), nil
+}
+
+func (s *Store) CoverExists(ctx context.Context, id *string) bool {
+	if id == nil || *id == "" {
+		return false
+	}
+	_, path, err := s.GetCover(ctx, *id)
+	if err != nil {
+		return false
+	}
+	st, err := os.Stat(path)
+	return err == nil && !st.IsDir()
+}
+
+func (s *Store) SetCoverID(ctx context.Context, itemID, coverID string) error {
+	if itemID == "" || coverID == "" {
+		return nil
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var current sql.NullString
+	if err := tx.QueryRowContext(ctx, `SELECT cover_id FROM library_items WHERE id = ?`, itemID).Scan(&current); err != nil {
+		return err
+	}
+	if current.Valid && current.String == coverID {
+		return nil
+	}
+	seq, err := nextSeq(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE library_items SET cover_id = ?, sync_seq = ? WHERE id = ?`, coverID, seq, itemID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) attachCoverURLs(ctx context.Context, items []model.Item) {
+	for i := range items {
+		s.attachCoverURL(ctx, &items[i])
+	}
+}
+
+func (s *Store) attachCoverURL(ctx context.Context, item *model.Item) {
+	if s.CoverExists(ctx, item.CoverID) {
+		item.CoverURL = model.CoverURL(item.CoverID)
+		return
+	}
+	if item.IGDBGameID != nil {
+		u := "/v1/library/" + item.ID + "/cover"
+		item.CoverURL = &u
+		return
+	}
+	item.CoverURL = nil
 }
 
 type Platform struct {
@@ -396,9 +460,9 @@ type scanner interface {
 
 func scanItem(row scanner) (model.Item, error) {
 	var (
-		it                                 model.Item
-		igdbPlat, igdbGame                 sql.NullInt64
-		created, upd                       string
+		it                                  model.Item
+		igdbPlat, igdbGame                  sql.NullInt64
+		created, upd                        string
 		regionN, coverN, barcodeN, deletedN sql.NullString
 	)
 	err := row.Scan(

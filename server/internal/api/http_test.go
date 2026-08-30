@@ -10,9 +10,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"game-db/internal/barcode"
 	"game-db/internal/config"
+	"game-db/internal/model"
 	"game-db/internal/store"
 )
 
@@ -351,5 +353,87 @@ func TestSyncJSONShape(t *testing.T) {
 	}
 	if _, ok := parsed["changes"]; !ok {
 		t.Fatalf("missing changes: %s", raw)
+	}
+}
+
+func TestLibraryCoverOnDemandURLAndCachedFile(t *testing.T) {
+	h := testHandler(t)
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	igdbID := int64(1905)
+	item, err := h.store.Insert(context.Background(), model.Item{
+		ID:           "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+		Title:        "Sunshine",
+		Platform:     "GameCube",
+		Completeness: "cib",
+		IGDBGameID:   &igdbID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.CoverURL == nil || *item.CoverURL != "/v1/library/"+item.ID+"/cover" {
+		t.Fatalf("want on-demand cover url, got %v", item.CoverURL)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/library", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var list struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&list); err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if len(list.Items) != 1 || list.Items[0]["cover_url"] != "/v1/library/"+item.ID+"/cover" {
+		t.Fatalf("%v", list.Items)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/library/"+item.ID+"/cover", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("want 404 without IGDB, got %d", res.StatusCode)
+	}
+
+	coverID := "cccccccc-cccc-cccc-cccc-cccccccccccc"
+	payload := []byte("fake-cover")
+	name, err := saveCoverFile(h.store.DataDir, coverID, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.SaveCover(context.Background(), coverID, "abc", "image/jpeg", name); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.SetCoverID(context.Background(), item.ID, coverID); err != nil {
+		t.Fatal(err)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/library/"+item.ID+"/cover", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != 200 {
+		t.Fatalf("status %d %s", res.StatusCode, got)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("body %q", got)
 	}
 }

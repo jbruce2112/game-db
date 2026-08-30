@@ -55,10 +55,14 @@ export default function GameDetail() {
     },
   });
 
+  const src = q.data ? coverSrc(q.data) : null;
+  const [coverFailed, setCoverFailed] = useState(false);
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [id, src]);
+
   if (q.isLoading) return <p className="p-8 text-[#9aa3b2]">Loading…</p>;
   if (q.isError || !q.data) return <p className="p-8 text-red-400">Not found.</p>;
-
-  const src = coverSrc(q.data);
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
@@ -72,8 +76,8 @@ export default function GameDetail() {
       </Link>
       <div className="mt-6 grid gap-8 sm:grid-cols-[180px_1fr]">
         <div className="aspect-[3/4] overflow-hidden rounded-lg border border-[#2a2e38] bg-[#16181f]">
-          {src ? (
-            <img src={src} alt="" className="h-full w-full object-cover" />
+          {src && !coverFailed ? (
+            <img src={src} alt="" className="h-full w-full object-cover" onError={() => setCoverFailed(true)} />
           ) : (
             <div className="grid h-full place-items-center p-4 text-center text-sm text-[#9aa3b2]">
               No cover

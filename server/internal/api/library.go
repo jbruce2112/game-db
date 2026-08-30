@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -40,7 +41,84 @@ func (h *Handler) listLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.KickCoverBackfill()
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (h *Handler) libraryCover(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	item, err := h.store.Get(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && item.DeletedAt != nil) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !h.store.CoverExists(r.Context(), item.CoverID) {
+		h.ensureCoverFromIGDB(r.Context(), &item)
+	}
+	if !h.store.CoverExists(r.Context(), item.CoverID) {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	h.serveCoverFile(w, r, *item.CoverID)
+}
+
+func (h *Handler) serveCoverFile(w http.ResponseWriter, r *http.Request, coverID string) {
+	ct, path, err := h.store.GetCover(r.Context(), coverID)
+	if err != nil {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	http.ServeFile(w, r, path)
+}
+
+func (h *Handler) ensureCoverFromIGDB(ctx context.Context, item *model.Item) {
+	if item == nil || h.store.CoverExists(ctx, item.CoverID) {
+		return
+	}
+	if h.igdb == nil || !h.cfg.IGDBConfigured() || item.IGDBGameID == nil {
+		return
+	}
+	chI, loaded := h.coverInflight.LoadOrStore(item.ID, make(chan struct{}))
+	ch := chI.(chan struct{})
+	if loaded {
+		select {
+		case <-ch:
+		case <-ctx.Done():
+			return
+		}
+		if fresh, err := h.store.Get(ctx, item.ID); err == nil {
+			*item = fresh
+		}
+		return
+	}
+	defer func() {
+		close(ch)
+		h.coverInflight.Delete(item.ID)
+	}()
+	before := ""
+	if item.CoverID != nil {
+		before = *item.CoverID
+	}
+	h.log.Info("cover fetch", "id", item.ID, "igdb", *item.IGDBGameID)
+	h.attachCoverFromIGDBCtx(ctx, item)
+	if item.CoverID == nil || !h.store.CoverExists(ctx, item.CoverID) {
+		return
+	}
+	if *item.CoverID != before {
+		if err := h.store.SetCoverID(ctx, item.ID, *item.CoverID); err != nil {
+			h.log.Warn("cover set id", "id", item.ID, "err", err)
+		}
+	}
 }
 
 func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +134,7 @@ func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.igdb != nil && h.cfg.IGDBConfigured() {
 		for i := range items {
-			h.attachCoverFromIGDB(r, &items[i])
+			h.attachCoverFromIGDBCtx(r.Context(), &items[i])
 		}
 	}
 	if err := h.store.ReplaceAll(r.Context(), items); err != nil {
@@ -66,15 +144,21 @@ func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"imported": len(items)})
 }
 
-func (h *Handler) attachCoverFromIGDB(r *http.Request, item *model.Item) {
-	if item.IGDBGameID == nil {
+func (h *Handler) attachCoverFromIGDBCtx(ctx context.Context, item *model.Item) {
+	if h.igdb == nil || item.IGDBGameID == nil {
 		return
 	}
-	game, err := h.igdb.Game(r.Context(), *item.IGDBGameID)
-	if err != nil || game.CoverImageID == "" {
+	game, err := h.igdb.Game(ctx, *item.IGDBGameID)
+	if err != nil {
+		h.log.Warn("cover igdb game", "id", item.ID, "igdb", *item.IGDBGameID, "err", err)
 		return
 	}
-	_ = h.cacheCover(r, item, game.CoverImageID)
+	if game.CoverImageID == "" {
+		return
+	}
+	if err := h.cacheCover(ctx, item, game.CoverImageID); err != nil {
+		h.log.Warn("cover cache", "id", item.ID, "err", err)
+	}
 }
 
 func (h *Handler) exportLibraryCSV(w http.ResponseWriter, r *http.Request) {
@@ -228,24 +312,27 @@ func (h *Handler) snapshotFromIGDB(r *http.Request, item *model.Item, gameID int
 		item.IGDBPlatformID = &id
 	}
 	if game.CoverImageID != "" {
-		if err := h.cacheCover(r, item, game.CoverImageID); err != nil {
+		if err := h.cacheCover(r.Context(), item, game.CoverImageID); err != nil {
 			h.log.Warn("cover cache", "err", err)
 		}
 	}
 	return nil
 }
 
-func (h *Handler) cacheCover(r *http.Request, item *model.Item, imageID string) error {
-	ct, data, err := h.igdb.DownloadCover(r.Context(), imageID)
+func (h *Handler) cacheCover(ctx context.Context, item *model.Item, imageID string) error {
+	ct, data, err := h.igdb.DownloadCover(ctx, imageID)
 	if err != nil {
 		return err
 	}
 	id := newID()
+	if item.CoverID != nil && *item.CoverID != "" {
+		id = *item.CoverID
+	}
 	name, err := saveCoverFile(h.store.DataDir, id, data)
 	if err != nil {
 		return err
 	}
-	if err := h.store.SaveCover(r.Context(), id, imageID, ct, name); err != nil {
+	if err := h.store.SaveCover(ctx, id, imageID, ct, name); err != nil {
 		_ = os.Remove(filepath.Join(h.store.DataDir, "covers", name))
 		return err
 	}

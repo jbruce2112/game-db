@@ -90,6 +90,8 @@ export const api = {
     req<BarcodeSearch>(`/v1/search/barcode?${new URLSearchParams({ q })}`),
 };
 
-export function coverSrc(item: { cover_url?: string | null }) {
-  return item.cover_url ?? null;
+export function coverSrc(item: { id: string; cover_url?: string | null; igdb_game_id?: number | null }) {
+  if (item.cover_url) return item.cover_url;
+  if (item.igdb_game_id) return `/v1/library/${item.id}/cover`;
+  return null;
 }

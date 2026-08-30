@@ -212,12 +212,20 @@ function CoverThumb({ item }: { item: LibraryItem }) {
 
 function CoverImg({ item }: { item: LibraryItem }) {
   const src = coverSrc(item);
-  if (!src) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
     return (
       <div className="grid h-full w-full place-items-center px-2 text-center text-xs text-[#9aa3b2]">
         {item.title}
       </div>
     );
   }
-  return <img src={src} alt="" className="h-full w-full object-cover" />;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
 }
