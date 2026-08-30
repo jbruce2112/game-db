@@ -25,6 +25,8 @@ export type PriceValue = {
   product_name: string;
   console_name: string;
   url: string;
+  source?: string;
+  listings?: number;
   loose_cents: number | null;
   cib_cents: number | null;
   new_cents: number | null;

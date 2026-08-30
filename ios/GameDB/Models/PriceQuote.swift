@@ -6,6 +6,8 @@ struct PriceQuote: Codable, Equatable, Hashable {
     var productName: String
     var consoleName: String
     var url: String
+    var source: String?
+    var listings: Int?
     var looseCents: Int?
     var cibCents: Int?
     var newCents: Int?
@@ -14,7 +16,7 @@ struct PriceQuote: Codable, Equatable, Hashable {
         case pcId = "pc_id"
         case productName = "product_name"
         case consoleName = "console_name"
-        case url
+        case url, source, listings
         case looseCents = "loose_cents"
         case cibCents = "cib_cents"
         case newCents = "new_cents"
@@ -22,9 +24,9 @@ struct PriceQuote: Codable, Equatable, Hashable {
 
     func cents(for completeness: String) -> Int? {
         switch completeness {
-        case "loose": return looseCents
-        case "cib": return cibCents
-        case "new": return newCents
+        case "loose": return looseCents ?? cibCents
+        case "cib": return cibCents ?? looseCents ?? newCents
+        case "new": return newCents ?? cibCents ?? looseCents
         default: return cibCents ?? looseCents ?? newCents
         }
     }

@@ -16,7 +16,7 @@ type priceSource interface {
 }
 
 func (h *Handler) KickPriceBackfill() {
-	if h.pc == nil || !h.cfg.PriceChartingConfigured() {
+	if !h.cfg.PricesConfigured() {
 		return
 	}
 	if !h.priceBackfillBusy.CompareAndSwap(false, true) {
@@ -93,7 +93,7 @@ func (h *Handler) attachValues(ctx context.Context, items []model.Item) {
 }
 
 func (h *Handler) ensurePrice(ctx context.Context, item *model.Item) {
-	if item == nil || h.pc == nil || !h.cfg.PriceChartingConfigured() {
+	if item == nil || !h.cfg.PricesConfigured() {
 		return
 	}
 	key := store.QuoteKey(*item)
@@ -133,7 +133,9 @@ func (h *Handler) refreshPrice(ctx context.Context, item model.Item) (store.Pric
 		q.PCID = prod.ID
 		q.ProductName = prod.Name
 		q.ConsoleName = prod.Console
-		q.URL = prod.URL()
+		q.URL = prod.URL
+		q.Source = prod.Source
+		q.Listings = prod.Listings
 		q.LooseCents = prod.Loose
 		q.CIBCents = prod.CIB
 		q.NewCents = prod.New
@@ -144,26 +146,62 @@ func (h *Handler) refreshPrice(ctx context.Context, item model.Item) (store.Pric
 	return q, nil
 }
 
-func (h *Handler) lookupPriceProduct(ctx context.Context, item model.Item) (pricecharting.Product, error) {
+type pricedHit struct {
+	ID, Name, Console, URL, Source string
+	Listings                       int
+	Loose, CIB, New                *int
+}
+
+func (h *Handler) lookupPriceProduct(ctx context.Context, item model.Item) (pricedHit, error) {
+	if h.ebay != nil {
+		code := ""
+		if item.Barcode != nil {
+			code = *item.Barcode
+		}
+		got, err := h.ebay.Quote(ctx, item.Title, item.Platform, code)
+		if err != nil {
+			return pricedHit{}, err
+		}
+		if got.Listings > 0 && (got.Loose != nil || got.CIB != nil || got.New != nil) {
+			return pricedHit{
+				ID: "ebay", Name: got.Name, Console: got.Console, URL: got.URL,
+				Source: "ebay", Listings: got.Listings,
+				Loose: got.Loose, CIB: got.CIB, New: got.New,
+			}, nil
+		}
+	}
+	if h.pc == nil {
+		return pricedHit{}, nil
+	}
 	if item.Barcode != nil && *item.Barcode != "" {
 		for _, code := range barcode.Variants(*item.Barcode) {
 			p, err := h.pc.ProductByUPC(ctx, code)
 			if err != nil {
-				return pricecharting.Product{}, err
+				return pricedHit{}, err
 			}
 			if p.ID != "" {
-				return p, nil
+				return pcHit(p), nil
 			}
 		}
 	}
 	hits, err := h.pc.Search(ctx, item.Title)
 	if err != nil {
-		return pricecharting.Product{}, err
+		return pricedHit{}, err
 	}
 	region := ""
 	if item.Region != nil {
 		region = *item.Region
 	}
 	best, _ := pricecharting.PickBest(hits, item.Title, item.Platform, region)
-	return best, nil
+	if best.ID == "" {
+		return pricedHit{}, nil
+	}
+	return pcHit(best), nil
+}
+
+func pcHit(p pricecharting.Product) pricedHit {
+	return pricedHit{
+		ID: p.ID, Name: p.Name, Console: p.Console, URL: p.URL(),
+		Source: "pricecharting", Loose: p.Loose, CIB: p.CIB, New: p.New,
+	}
 }

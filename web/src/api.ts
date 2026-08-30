@@ -23,7 +23,13 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  me: () => req<{ igdb_configured: boolean; pricecharting_configured?: boolean }>("/v1/auth/me"),
+  me: () =>
+    req<{
+      igdb_configured: boolean;
+      pricecharting_configured?: boolean;
+      ebay_configured?: boolean;
+      prices_configured?: boolean;
+    }>("/v1/auth/me"),
   login: (password: string) =>
     req<{ token: string }>("/v1/auth/login", {
       method: "POST",
@@ -109,11 +115,11 @@ export function valueCents(item: {
   if (!v) return null;
   switch (item.completeness) {
     case "loose":
-      return v.loose_cents ?? null;
+      return v.loose_cents ?? v.cib_cents ?? null;
     case "cib":
-      return v.cib_cents ?? null;
+      return v.cib_cents ?? v.loose_cents ?? v.new_cents ?? null;
     case "new":
-      return v.new_cents ?? null;
+      return v.new_cents ?? v.cib_cents ?? v.loose_cents ?? null;
     default:
       return v.cib_cents ?? v.loose_cents ?? v.new_cents ?? null;
   }

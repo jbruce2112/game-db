@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, coverSrc, formatUSD, valueCents } from "../api";
 import type { LibraryItem } from "../types";
 
-export default function Library({ igdb, pricecharting = false }: { igdb: boolean; pricecharting?: boolean }) {
+export default function Library({ igdb, prices = false }: { igdb: boolean; prices?: boolean }) {
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("title");
@@ -18,7 +18,7 @@ export default function Library({ igdb, pricecharting = false }: { igdb: boolean
     queryKey: ["library", sort],
     queryFn: () => api.library({ sort }),
     refetchInterval: (query) => {
-      if (!pricecharting) return false;
+      if (!prices) return false;
       const items = query.state.data?.items ?? [];
       if (items.length === 0) return false;
       if (items.every((i) => i.value)) return false;
@@ -224,7 +224,7 @@ export default function Library({ igdb, pricecharting = false }: { igdb: boolean
       </div>
 
       <p className="mt-12 text-center text-xs text-[#9aa3b2]">
-        Game data from IGDB.com. Values from PriceCharting when configured.
+        Game data from IGDB.com. Asking prices from eBay when configured.
       </p>
     </div>
   );

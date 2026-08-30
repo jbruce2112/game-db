@@ -382,6 +382,8 @@ components:
         product_name: { type: string }
         console_name: { type: string }
         url: { type: string }
+        source: { type: string }
+        listings: { type: integer }
         loose_cents: { type: integer, nullable: true }
         cib_cents: { type: integer, nullable: true }
         new_cents: { type: integer, nullable: true }

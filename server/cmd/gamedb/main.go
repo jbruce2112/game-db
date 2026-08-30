@@ -59,7 +59,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info("listen", "addr", cfg.HTTPAddr, "data", cfg.DataDir, "igdb", cfg.IGDBConfigured(), "pricecharting", cfg.PriceChartingConfigured())
+		log.Info("listen", "addr", cfg.HTTPAddr, "data", cfg.DataDir, "igdb", cfg.IGDBConfigured(), "ebay", cfg.EbayConfigured(), "pricecharting", cfg.PriceChartingConfigured())
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("http", "err", err)
 			os.Exit(1)

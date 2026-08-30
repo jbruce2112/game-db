@@ -29,12 +29,15 @@ type Item struct {
 	Value          *Value     `json:"value,omitempty"`
 }
 
-// Value is a PriceCharting snapshot. Server-derived; not stored on the item row.
+// Value is a market snapshot (eBay asking prices, or PriceCharting if configured).
+// Server-derived; not stored on the item row.
 type Value struct {
 	PCID        string `json:"pc_id"`
 	ProductName string `json:"product_name"`
 	ConsoleName string `json:"console_name"`
 	URL         string `json:"url"`
+	Source      string `json:"source,omitempty"`
+	Listings    int    `json:"listings,omitempty"`
 	LooseCents  *int   `json:"loose_cents"`
 	CIBCents    *int   `json:"cib_cents"`
 	NewCents    *int   `json:"new_cents"`

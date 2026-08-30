@@ -166,18 +166,23 @@ final class APIClient {
 }
 
 private struct TokenResponse: Codable { var token: String }
-struct MeResponse: Codable {
+struct MeResponse: Decodable {
     var igdbConfigured: Bool
     var pricechartingConfigured: Bool
     enum CodingKeys: String, CodingKey {
         case igdbConfigured = "igdb_configured"
         case pricechartingConfigured = "pricecharting_configured"
+        case pricesConfigured = "prices_configured"
+        case ebayConfigured = "ebay_configured"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         igdbConfigured = try c.decodeIfPresent(Bool.self, forKey: .igdbConfigured) ?? false
-        pricechartingConfigured = try c.decodeIfPresent(Bool.self, forKey: .pricechartingConfigured) ?? false
+        let prices = try c.decodeIfPresent(Bool.self, forKey: .pricesConfigured) ?? false
+        let ebay = try c.decodeIfPresent(Bool.self, forKey: .ebayConfigured) ?? false
+        let pc = try c.decodeIfPresent(Bool.self, forKey: .pricechartingConfigured) ?? false
+        pricechartingConfigured = prices || ebay || pc
     }
 }
 private struct SearchEnvelope: Codable { var games: [SearchGame] }

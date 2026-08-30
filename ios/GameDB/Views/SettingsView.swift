@@ -40,7 +40,7 @@ struct SettingsView: View {
                     LabeledContent("Paired", value: store.isPaired ? "Yes" : "No")
                     LabeledContent("Reachable", value: store.online ? "Yes" : "No")
                     LabeledContent("IGDB", value: store.igdbConfigured ? "Configured" : "No")
-                    LabeledContent("PriceCharting", value: store.pricechartingConfigured ? "Configured" : "No")
+                    LabeledContent("Prices", value: store.pricechartingConfigured ? "Configured" : "No")
                     if let cents = store.shelfValueCents {
                         LabeledContent("Shelf value", value: PriceQuote.usd(cents))
                     }

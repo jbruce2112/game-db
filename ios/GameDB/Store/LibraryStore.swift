@@ -85,6 +85,8 @@ final class LibraryStore {
                     productName: row["product_name"],
                     consoleName: row["console_name"],
                     url: row["url"],
+                    source: row["source"],
+                    listings: row["listings"],
                     looseCents: row["loose_cents"],
                     cibCents: row["cib_cents"],
                     newCents: row["new_cents"]
@@ -232,19 +234,21 @@ final class LibraryStore {
                 for item in remote {
                     guard let q = item.value else { continue }
                     try db.execute(sql: """
-                        INSERT INTO price_quotes (item_id, pc_id, product_name, console_name, url, loose_cents, cib_cents, new_cents)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO price_quotes (item_id, pc_id, product_name, console_name, url, source, listings, loose_cents, cib_cents, new_cents)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(item_id) DO UPDATE SET
                             pc_id=excluded.pc_id,
                             product_name=excluded.product_name,
                             console_name=excluded.console_name,
                             url=excluded.url,
+                            source=excluded.source,
+                            listings=excluded.listings,
                             loose_cents=excluded.loose_cents,
                             cib_cents=excluded.cib_cents,
                             new_cents=excluded.new_cents
                         """, arguments: [
                         item.id, q.pcId, q.productName, q.consoleName, q.url,
-                        q.looseCents, q.cibCents, q.newCents,
+                        q.source, q.listings, q.looseCents, q.cibCents, q.newCents,
                     ])
                 }
             }

@@ -126,7 +126,10 @@ export default function GameDetail() {
           </Field>
           {q.data.value && (
             <div className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm">
-              <div className="text-[#9aa3b2]">PriceCharting</div>
+              <div className="text-[#9aa3b2]">
+                {q.data.value.source === "ebay" ? "eBay asking" : "PriceCharting"}
+                {q.data.value.listings ? ` · ${q.data.value.listings} listings` : ""}
+              </div>
               <div className="mt-1 text-[#e8eaef]">
                 {q.data.value.product_name}
                 {q.data.value.console_name ? ` · ${q.data.value.console_name}` : ""}
@@ -149,7 +152,7 @@ export default function GameDetail() {
                   rel="noreferrer"
                   className="mt-2 inline-block text-xs text-[#e2b14a] hover:underline"
                 >
-                  Open on PriceCharting
+                  {q.data.value.source === "ebay" ? "See listings on eBay" : "Open on PriceCharting"}
                 </a>
               )}
             </div>

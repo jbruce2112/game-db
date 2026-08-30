@@ -45,7 +45,7 @@ This is a greenfield repo (`/Users/john/src/game-db`). v1 is intentionally small
 - **One container** publishes the API and the built SPA. Browser and iOS talk to the same REST API.
 - **SQLite** is the database (WAL mode, one volume). A personal library of thousands of games does not need Postgres.
 - **IGDB** is only contacted by the **server**. Covers and search results are cached locally so the library keeps working if IGDB is down.
-- **PriceCharting** is only contacted by the **server** (optional `PRICECHARTING_TOKEN`). Quotes are cached and attached to library JSON as `value`; they are not part of LWW sync.
+- **Prices** are fetched by the **server** from eBay asking listings (free `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET`) or optional PriceCharting. Quotes are cached and attached to library JSON as `value`; they are not part of LWW sync.
 - **iOS without a server:** browse / edit / manually add. IGDB search appears once a server (with IGDB credentials) is configured. No Twitch keys in the app binary.
 
 ### What “Keychain token” means on iOS

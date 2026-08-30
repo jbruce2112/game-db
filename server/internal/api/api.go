@@ -22,6 +22,7 @@ import (
 
 	"game-db/internal/barcode"
 	"game-db/internal/config"
+	"game-db/internal/ebay"
 	"game-db/internal/igdb"
 	"game-db/internal/pricecharting"
 	"game-db/internal/store"
@@ -39,6 +40,7 @@ type Handler struct {
 	coverBackfillBusy atomic.Bool
 	coverInflight     sync.Map
 	pc                priceSource
+	ebay              *ebay.Client
 	priceBackfillBusy atomic.Bool
 }
 
@@ -46,6 +48,9 @@ func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, 
 	h := &Handler{cfg: cfg, store: st, igdb: ig, log: log, frontend: frontend}
 	if cfg.PriceChartingConfigured() {
 		h.pc = pricecharting.New(cfg.PriceChartingToken)
+	}
+	if cfg.EbayConfigured() {
+		h.ebay = ebay.New(cfg.EbayClientID, cfg.EbayClientSecret, cfg.EbayMarketplace)
 	}
 	return h
 }
@@ -126,6 +131,8 @@ func (h *Handler) me(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{
 		"igdb_configured":          h.cfg.IGDBConfigured(),
 		"pricecharting_configured": h.cfg.PriceChartingConfigured(),
+		"ebay_configured":          h.cfg.EbayConfigured(),
+		"prices_configured":        h.cfg.PricesConfigured(),
 	})
 }
 

@@ -477,6 +477,9 @@ func TestLibraryAttachesPriceChartingValue(t *testing.T) {
 	if item.Value == nil || item.Value.PCID != "3584" || item.Value.CIBCents == nil || *item.Value.CIBCents != 5999 {
 		t.Fatalf("value %+v", item.Value)
 	}
+	if item.Value.Source != "pricecharting" {
+		t.Fatalf("source %q", item.Value.Source)
+	}
 
 	srv := httptest.NewServer(h.Router())
 	t.Cleanup(srv.Close)

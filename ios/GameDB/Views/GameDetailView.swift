@@ -49,10 +49,13 @@ struct GameDetailView: View {
                         .lineLimit(3...6)
                 }
                 if let quote = store.quotes[item.id] {
-                    Section("PriceCharting") {
+                    Section(quote.source == "ebay" ? "eBay asking" : "PriceCharting") {
                         LabeledContent("Match", value: quote.productName)
                         if !quote.consoleName.isEmpty {
                             LabeledContent("Console", value: quote.consoleName)
+                        }
+                        if let n = quote.listings, n > 0 {
+                            LabeledContent("Listings", value: String(n))
                         }
                         if let cents = quote.looseCents {
                             LabeledContent("Loose", value: PriceQuote.usd(cents))
@@ -64,7 +67,7 @@ struct GameDetailView: View {
                             LabeledContent("New", value: PriceQuote.usd(cents))
                         }
                         if let url = URL(string: quote.url), !quote.url.isEmpty {
-                            Link("Open on PriceCharting", destination: url)
+                            Link(quote.source == "ebay" ? "See listings on eBay" : "Open on PriceCharting", destination: url)
                         }
                     }
                 }

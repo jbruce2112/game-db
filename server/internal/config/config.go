@@ -14,6 +14,9 @@ type Config struct {
 	IGDBClientID       string
 	IGDBClientSecret   string
 	PriceChartingToken string
+	EbayClientID       string
+	EbayClientSecret   string
+	EbayMarketplace    string
 }
 
 func FromEnv() (Config, error) {
@@ -25,6 +28,9 @@ func FromEnv() (Config, error) {
 		IGDBClientID:       os.Getenv("IGDB_CLIENT_ID"),
 		IGDBClientSecret:   os.Getenv("IGDB_CLIENT_SECRET"),
 		PriceChartingToken: strings.TrimSpace(os.Getenv("PRICECHARTING_TOKEN")),
+		EbayClientID:       strings.TrimSpace(os.Getenv("EBAY_CLIENT_ID")),
+		EbayClientSecret:   strings.TrimSpace(os.Getenv("EBAY_CLIENT_SECRET")),
+		EbayMarketplace:    getenv("EBAY_MARKETPLACE", "EBAY_US"),
 	}
 	if strings.TrimSpace(cfg.AppPassword) == "" {
 		return Config{}, fmt.Errorf("APP_PASSWORD is required")
@@ -38,6 +44,14 @@ func (c Config) IGDBConfigured() bool {
 
 func (c Config) PriceChartingConfigured() bool {
 	return c.PriceChartingToken != ""
+}
+
+func (c Config) EbayConfigured() bool {
+	return c.EbayClientID != "" && c.EbayClientSecret != ""
+}
+
+func (c Config) PricesConfigured() bool {
+	return c.EbayConfigured() || c.PriceChartingConfigured()
 }
 
 func getenv(key, fallback string) string {

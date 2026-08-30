@@ -82,6 +82,10 @@ enum AppDatabase {
                 )
                 """)
         }
+        migrator.registerMigration("v4-price-source") { db in
+            try db.execute(sql: "ALTER TABLE price_quotes ADD COLUMN source TEXT")
+            try db.execute(sql: "ALTER TABLE price_quotes ADD COLUMN listings INTEGER")
+        }
         return migrator
     }
 }

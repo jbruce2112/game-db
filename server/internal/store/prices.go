@@ -16,6 +16,8 @@ type PriceQuote struct {
 	ProductName string
 	ConsoleName string
 	URL         string
+	Source      string
+	Listings    int
 	LooseCents  *int
 	CIBCents    *int
 	NewCents    *int
@@ -44,6 +46,8 @@ func (q PriceQuote) ToValue() *model.Value {
 		ProductName: q.ProductName,
 		ConsoleName: q.ConsoleName,
 		URL:         q.URL,
+		Source:      q.Source,
+		Listings:    q.Listings,
 		LooseCents:  q.LooseCents,
 		CIBCents:    q.CIBCents,
 		NewCents:    q.NewCents,
@@ -59,22 +63,25 @@ func (s *Store) UpsertPriceQuote(ctx context.Context, q PriceQuote) error {
 	}
 	_, err := s.DB.ExecContext(ctx, `
 		INSERT INTO price_quotes (
-			item_id, query_key, pc_id, product_name, console_name, url,
+			item_id, query_key, pc_id, product_name, console_name, url, source, listings,
 			loose_cents, cib_cents, new_cents, status, fetched_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(item_id) DO UPDATE SET
 			query_key=excluded.query_key,
 			pc_id=excluded.pc_id,
 			product_name=excluded.product_name,
 			console_name=excluded.console_name,
 			url=excluded.url,
+			source=excluded.source,
+			listings=excluded.listings,
 			loose_cents=excluded.loose_cents,
 			cib_cents=excluded.cib_cents,
 			new_cents=excluded.new_cents,
 			status=excluded.status,
 			fetched_at=excluded.fetched_at`,
 		q.ItemID, q.QueryKey, nullStr(q.PCID), nullStr(q.ProductName), nullStr(q.ConsoleName),
-		nullStr(q.URL), nullIntPtr(q.LooseCents), nullIntPtr(q.CIBCents), nullIntPtr(q.NewCents),
+		nullStr(q.URL), nullStr(q.Source), q.Listings,
+		nullIntPtr(q.LooseCents), nullIntPtr(q.CIBCents), nullIntPtr(q.NewCents),
 		q.Status, model.FormatTime(q.FetchedAt),
 	)
 	return err
@@ -82,7 +89,7 @@ func (s *Store) UpsertPriceQuote(ctx context.Context, q PriceQuote) error {
 
 func (s *Store) PriceQuote(ctx context.Context, itemID string) (PriceQuote, bool, error) {
 	q, err := scanQuote(s.DB.QueryRowContext(ctx, `
-		SELECT item_id, query_key, pc_id, product_name, console_name, url,
+		SELECT item_id, query_key, pc_id, product_name, console_name, url, source, listings,
 			loose_cents, cib_cents, new_cents, status, fetched_at
 		FROM price_quotes WHERE item_id = ?`, itemID))
 	if err == sql.ErrNoRows {
@@ -106,7 +113,7 @@ func (s *Store) PriceQuotes(ctx context.Context, ids []string) (map[string]Price
 		args[i] = id
 	}
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT item_id, query_key, pc_id, product_name, console_name, url,
+		SELECT item_id, query_key, pc_id, product_name, console_name, url, source, listings,
 			loose_cents, cib_cents, new_cents, status, fetched_at
 		FROM price_quotes WHERE item_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
 	if err != nil {
@@ -125,11 +132,11 @@ func (s *Store) PriceQuotes(ctx context.Context, ids []string) (map[string]Price
 
 func scanQuote(row scanner) (PriceQuote, error) {
 	var (
-		q                                           PriceQuote
-		pcID, name, console, url, fetched, queryKey sql.NullString
-		loose, cib, neu                             sql.NullInt64
+		q                                                          PriceQuote
+		pcID, name, console, urlStr, fetched, queryKey, sourceName sql.NullString
+		loose, cib, neu, listings                                  sql.NullInt64
 	)
-	err := row.Scan(&q.ItemID, &queryKey, &pcID, &name, &console, &url, &loose, &cib, &neu, &q.Status, &fetched)
+	err := row.Scan(&q.ItemID, &queryKey, &pcID, &name, &console, &urlStr, &sourceName, &listings, &loose, &cib, &neu, &q.Status, &fetched)
 	if err != nil {
 		return PriceQuote{}, err
 	}
@@ -137,7 +144,11 @@ func scanQuote(row scanner) (PriceQuote, error) {
 	q.PCID = pcID.String
 	q.ProductName = name.String
 	q.ConsoleName = console.String
-	q.URL = url.String
+	q.URL = urlStr.String
+	q.Source = sourceName.String
+	if listings.Valid {
+		q.Listings = int(listings.Int64)
+	}
 	if loose.Valid {
 		v := int(loose.Int64)
 		q.LooseCents = &v

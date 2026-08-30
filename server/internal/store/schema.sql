@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS price_quotes (
     product_name TEXT,
     console_name TEXT,
     url          TEXT,
+    source       TEXT,
+    listings     INTEGER,
     loose_cents  INTEGER,
     cib_cents    INTEGER,
     new_cents    INTEGER,
