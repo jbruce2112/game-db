@@ -167,6 +167,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 - Login, served at the server origin
 - Settings readout: IGDB configured yes/no (no full settings app in v1)
+- Platform sidebar on the library: filter by console with per-platform counts
 
 **iOS-only**
 
@@ -175,8 +176,6 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Explicitly not v1** (backlog)
 
-- Bug: missing images on web after ios app syncs to initial empty server state
-- Web platform sidebar — filter the library by platform with per-platform counts (iOS later)
 - Statistics view — counts by platform, region, completeness, and similar shelf breakdowns
 - PriceCharting / values
 - Wishlist, multiple collections, hardware, amiibo
@@ -186,7 +185,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export/import, barcode scan, and bulk add are implemented. The web platform sidebar is the next named follow-up.
+CSV export/import, barcode scan, bulk add, IGDB cover backfill, and the web platform sidebar are implemented. Statistics is the next named follow-up. iOS platform filter comes later.
 
 ## Repo layout (monorepo)
 

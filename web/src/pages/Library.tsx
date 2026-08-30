@@ -15,14 +15,27 @@ export default function Library({ igdb }: { igdb: boolean }) {
   const qc = useQueryClient();
 
   const lib = useQuery({
-    queryKey: ["library", q, platform, sort],
-    queryFn: () => api.library({ q, platform, sort }),
+    queryKey: ["library", sort],
+    queryFn: () => api.library({ sort }),
   });
 
-  const platforms = useMemo(() => {
-    const set = new Set((lib.data?.items ?? []).map((i) => i.platform));
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [lib.data]);
+  const allItems = lib.data?.items ?? [];
+  const platformCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of allItems) {
+      map.set(item.platform, (map.get(item.platform) ?? 0) + 1);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [allItems]);
+
+  const items = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    return allItems.filter((item) => {
+      if (platform && item.platform !== platform) return false;
+      if (query && !item.title.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [allItems, platform, q]);
 
   async function logout() {
     await api.logout();
@@ -30,15 +43,14 @@ export default function Library({ igdb }: { igdb: boolean }) {
     nav("/login");
   }
 
-  const items = lib.data?.items ?? [];
-
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-7xl px-4 py-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Library</h1>
           <p className="text-sm text-[#9aa3b2]">
             {items.length} game{items.length === 1 ? "" : "s"}
+            {platform ? ` · ${platform}` : ""}
             {!igdb && " · IGDB not configured"}
           </p>
         </div>
@@ -96,95 +108,162 @@ export default function Library({ igdb }: { igdb: boolean }) {
         </div>
       </header>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <input
-          placeholder="Search titles"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="min-w-48 flex-1 rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm outline-none focus:border-[#e2b14a]"
-        />
-        <select
-          value={platform}
-          onChange={(e) => setPlatform(e.target.value)}
-          className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
-        >
-          <option value="">All platforms</option>
-          {platforms.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
-        >
-          <option value="title">Title</option>
-          <option value="added">Date added</option>
-        </select>
-        <div className="flex overflow-hidden rounded-lg border border-[#2a2e38] text-sm">
-          <button
-            className={`px-3 py-2 ${view === "grid" ? "bg-[#16181f] text-[#e2b14a]" : "text-[#9aa3b2]"}`}
-            onClick={() => setView("grid")}
-          >
-            Grid
-          </button>
-          <button
-            className={`px-3 py-2 ${view === "list" ? "bg-[#16181f] text-[#e2b14a]" : "text-[#9aa3b2]"}`}
-            onClick={() => setView("list")}
-          >
-            List
-          </button>
+      <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-start">
+        {allItems.length > 0 && (
+          <PlatformSidebar
+            total={allItems.length}
+            platforms={platformCounts}
+            selected={platform}
+            onSelect={setPlatform}
+          />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap gap-3">
+            <input
+              placeholder="Search titles"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="min-w-48 flex-1 rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm outline-none focus:border-[#e2b14a]"
+            />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
+            >
+              <option value="title">Title</option>
+              <option value="added">Date added</option>
+            </select>
+            <div className="flex overflow-hidden rounded-lg border border-[#2a2e38] text-sm">
+              <button
+                type="button"
+                className={`px-3 py-2 ${view === "grid" ? "bg-[#16181f] text-[#e2b14a]" : "text-[#9aa3b2]"}`}
+                onClick={() => setView("grid")}
+              >
+                Grid
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-2 ${view === "list" ? "bg-[#16181f] text-[#e2b14a]" : "text-[#9aa3b2]"}`}
+                onClick={() => setView("list")}
+              >
+                List
+              </button>
+            </div>
+          </div>
+
+          {lib.isLoading && <p className="mt-10 text-[#9aa3b2]">Loading…</p>}
+          {lib.isError && <p className="mt-10 text-red-400">Could not load library.</p>}
+          {importError && <p className="mt-4 text-red-400">{importError}</p>}
+
+          {!lib.isLoading && allItems.length === 0 && (
+            <div className="mt-16 text-center text-[#9aa3b2]">
+              <p className="text-lg text-[#e8eaef]">Nothing on the shelf yet.</p>
+              <p className="mt-1">Add a game from IGDB or enter one manually.</p>
+            </div>
+          )}
+
+          {!lib.isLoading && allItems.length > 0 && items.length === 0 && (
+            <p className="mt-10 text-[#9aa3b2]">No games match this filter.</p>
+          )}
+
+          {items.length > 0 && view === "grid" && (
+            <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <CoverCard item={item} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {items.length > 0 && view === "list" && (
+            <ul className="mt-6 divide-y divide-[#2a2e38] rounded-xl border border-[#2a2e38]">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    to={`/game/${item.id}`}
+                    className="flex items-center gap-4 px-3 py-2 hover:bg-[#16181f]"
+                  >
+                    <CoverThumb item={item} />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{item.title}</div>
+                      <div className="text-sm text-[#9aa3b2]">
+                        {item.platform}
+                        {item.region ? ` · ${item.region.toUpperCase()}` : ""}
+                        {` · ${item.completeness}`}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
-
-      {lib.isLoading && <p className="mt-10 text-[#9aa3b2]">Loading…</p>}
-      {lib.isError && <p className="mt-10 text-red-400">Could not load library.</p>}
-      {importError && <p className="mt-4 text-red-400">{importError}</p>}
-
-      {!lib.isLoading && items.length === 0 && (
-        <div className="mt-16 text-center text-[#9aa3b2]">
-          <p className="text-lg text-[#e8eaef]">Nothing on the shelf yet.</p>
-          <p className="mt-1">Add a game from IGDB or enter one manually.</p>
-        </div>
-      )}
-
-      {view === "grid" ? (
-        <ul className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {items.map((item) => (
-            <li key={item.id}>
-              <CoverCard item={item} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <ul className="mt-8 divide-y divide-[#2a2e38] rounded-xl border border-[#2a2e38]">
-          {items.map((item) => (
-            <li key={item.id}>
-              <Link
-                to={`/game/${item.id}`}
-                className="flex items-center gap-4 px-3 py-2 hover:bg-[#16181f]"
-              >
-                <CoverThumb item={item} />
-                <div className="min-w-0">
-                  <div className="truncate font-medium">{item.title}</div>
-                  <div className="text-sm text-[#9aa3b2]">
-                    {item.platform}
-                    {item.region ? ` · ${item.region.toUpperCase()}` : ""}
-                    {` · ${item.completeness}`}
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
 
       <p className="mt-12 text-center text-xs text-[#9aa3b2]">
         Game data from IGDB.com
       </p>
     </div>
+  );
+}
+
+function PlatformSidebar({
+  total,
+  platforms,
+  selected,
+  onSelect,
+}: {
+  total: number;
+  platforms: [string, number][];
+  selected: string;
+  onSelect: (platform: string) => void;
+}) {
+  return (
+    <nav
+      aria-label="Platforms"
+      className="max-h-48 overflow-y-auto rounded-xl border border-[#2a2e38] md:sticky md:top-4 md:max-h-[calc(100vh-6rem)] md:w-56 md:shrink-0 divide-y divide-[#2a2e38]"
+    >
+      <PlatformRow label="All games" count={total} active={selected === ""} onClick={() => onSelect("")} />
+      {platforms.map(([name, count]) => (
+        <PlatformRow
+          key={name}
+          label={name}
+          count={count}
+          active={selected === name}
+          onClick={() => onSelect(name)}
+        />
+      ))}
+    </nav>
+  );
+}
+
+function PlatformRow({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "true" : undefined}
+      title={label}
+      className={`flex w-full items-center justify-between gap-3 border-l-2 px-3 py-2 text-left text-sm ${
+        active
+          ? "border-[#e2b14a] bg-[#16181f] text-[#e2b14a]"
+          : "border-transparent text-[#e8eaef] hover:bg-[#16181f]"
+      }`}
+    >
+      <span className="truncate">{label}</span>
+      <span className={`tabular-nums ${active ? "text-[#e2b14a]" : "text-[#9aa3b2]"}`}>{count}</span>
+    </button>
   );
 }
 
