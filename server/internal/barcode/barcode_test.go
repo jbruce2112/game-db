@@ -35,10 +35,11 @@ func TestVariants(t *testing.T) {
 
 func TestSearchQuery(t *testing.T) {
 	cases := map[string]string{
-		"Battlefield Bad Company 2 (PC DVD)": "Battlefield Bad Company 2",
-		"The Legend of Zelda: Breath of the Wild Master Edition - Nintendo Switch": "The Legend of Zelda: Breath of the Wild Master Edition",
-		"Super Mario Sunshine (Gamecube)": "Super Mario Sunshine",
+		"Battlefield Bad Company 2 (PC DVD)":                                                           "Battlefield Bad Company 2",
+		"The Legend of Zelda: Breath of the Wild Master Edition - Nintendo Switch":                     "The Legend of Zelda: Breath of the Wild Master Edition",
+		"Super Mario Sunshine (Gamecube)":                                                              "Super Mario Sunshine",
 		"Shin Megami Tensei III: Nocturne HD Remaster  Atlus  PlayStation 4  [Physical]  730865220366": "Shin Megami Tensei III: Nocturne HD Remaster",
+		"Super Deluxe Games Tetris Effect: Connected For PlayStation 5":                                "Tetris Effect: Connected",
 	}
 	for in, want := range cases {
 		if got := SearchQuery(in); got != want {
@@ -122,5 +123,45 @@ func TestLookupFallsBack(t *testing.T) {
 	}
 	if p.Title != "Paper Mario" || p.Source != "openproductsfacts" {
 		t.Fatalf("%+v", p)
+	}
+}
+
+func TestLookupFallsBackToGoUPC(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/upc" || strings.HasPrefix(r.URL.Path, "/off/") {
+			w.WriteHeader(404)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<html><h1 class="product-name">Super Deluxe Games Tetris Effect: Connected For PlayStation 5</h1></html>`))
+	}))
+	t.Cleanup(srv.Close)
+	old := UPCItemDBURL
+	oldOFF := OpenProductsURL
+	oldGo := GoUPCURL
+	UPCItemDBURL = srv.URL + "/upc"
+	OpenProductsURL = srv.URL + "/off/"
+	GoUPCURL = srv.URL
+	t.Cleanup(func() {
+		UPCItemDBURL = old
+		OpenProductsURL = oldOFF
+		GoUPCURL = oldGo
+	})
+	p, err := Lookup(context.Background(), srv.Client(), []string{"4570101050335"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Title != "Super Deluxe Games Tetris Effect: Connected For PlayStation 5" || p.Source != "goupc" {
+		t.Fatalf("%+v", p)
+	}
+}
+
+func TestParseGoUPC(t *testing.T) {
+	html := `<title>Super Deluxe Games Tetris Effect: Connected For PlayStation 5 — EAN 4570101050335 — Go-UPC</title>`
+	if got := parseGoUPC(html); got != "Super Deluxe Games Tetris Effect: Connected For PlayStation 5" {
+		t.Fatalf("%q", got)
+	}
+	if got := parseGoUPC(`<title>Invalid Value — Go-UPC</title>`); got != "" {
+		t.Fatalf("invalid %q", got)
 	}
 }

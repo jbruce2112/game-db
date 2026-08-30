@@ -78,25 +78,25 @@ var platformHints = []string{
 }
 
 var platformPretty = map[string]string{
-	"nintendo switch":    "Nintendo Switch",
-	"nintendo gamecube":  "Nintendo GameCube",
-	"nintendo 64":        "Nintendo 64",
-	"nintendo wii u":     "Wii U",
-	"nintendo wii":       "Wii",
-	"game boy advance":   "Game Boy Advance",
-	"game boy color":     "Game Boy Color",
-	"super nintendo":     "Super Nintendo",
-	"playstation 5":      "PlayStation 5",
-	"playstation 4":      "PlayStation 4",
-	"playstation 3":      "PlayStation 3",
-	"playstation 2":      "PlayStation 2",
-	"playstation vita":   "PlayStation Vita",
-	"xbox series x":      "Xbox Series X",
-	"xbox series s":      "Xbox Series S",
-	"xbox one":           "Xbox One",
-	"xbox 360":           "Xbox 360",
-	"sega genesis":       "Sega Genesis",
-	"dreamcast":          "Dreamcast",
+	"nintendo switch":   "Nintendo Switch",
+	"nintendo gamecube": "Nintendo GameCube",
+	"nintendo 64":       "Nintendo 64",
+	"nintendo wii u":    "Wii U",
+	"nintendo wii":      "Wii",
+	"game boy advance":  "Game Boy Advance",
+	"game boy color":    "Game Boy Color",
+	"super nintendo":    "Super Nintendo",
+	"playstation 5":     "PlayStation 5",
+	"playstation 4":     "PlayStation 4",
+	"playstation 3":     "PlayStation 3",
+	"playstation 2":     "PlayStation 2",
+	"playstation vita":  "PlayStation Vita",
+	"xbox series x":     "Xbox Series X",
+	"xbox series s":     "Xbox Series S",
+	"xbox one":          "Xbox One",
+	"xbox 360":          "Xbox 360",
+	"sega genesis":      "Sega Genesis",
+	"dreamcast":         "Dreamcast",
 }
 
 var publisherPhrases = []string{
@@ -105,6 +105,9 @@ var publisherPhrases = []string{
 	"electronic arts",
 	"nis america",
 	"limited run games",
+	"super deluxe games",
+	"superdeluxegames",
+	"enhance games",
 	"warner bros",
 	"rockstar games",
 	"2k games",
@@ -154,6 +157,8 @@ func SearchQuery(product string) string {
 	}
 	s = stripWrapped(s, '[', ']')
 	s = stripWrapped(s, '(', ')')
+	s = removeWordPhrases(s, platformSuffixes)
+	s = removeWordPhrases(s, publisherPhrases)
 	var kept []string
 	for _, f := range strings.Fields(s) {
 		t := strings.Trim(f, ".,;:|-–")
@@ -162,10 +167,24 @@ func SearchQuery(product string) string {
 		}
 		kept = append(kept, f)
 	}
-	s = strings.Join(kept, " ")
-	s = removeWordPhrases(s, platformSuffixes)
-	s = removeWordPhrases(s, publisherPhrases)
-	return strings.Join(strings.Fields(s), " ")
+	return trimTrailingPrep(strings.Join(kept, " "))
+}
+
+func trimTrailingPrep(s string) string {
+	for {
+		lower := strings.ToLower(s)
+		trimmed := false
+		for _, suf := range []string{" for", " on"} {
+			if strings.HasSuffix(lower, suf) {
+				s = strings.TrimSpace(s[:len(s)-len(suf)])
+				trimmed = true
+				break
+			}
+		}
+		if !trimmed {
+			return s
+		}
+	}
 }
 
 // SearchQueries is the primary cleaned title plus shorter fallbacks.
@@ -382,5 +401,3 @@ func PlatformDisplay(product string) string {
 	}
 	return strings.Join(parts, " ")
 }
-
-

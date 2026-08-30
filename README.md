@@ -88,7 +88,7 @@ Scan a box UPC/EAN to add a game.
 - **iOS:** camera button on the library, or Add → Scan. The Simulator has no camera; type the digits.
 - **Web:** Add game → Barcode. Camera works in Chromium-based browsers that support `BarcodeDetector`; otherwise type the code.
 
-The server looks the code up in a product catalog (upcitemdb, then Open Products Facts), caches the result, then searches IGDB with a cleaned title. The barcode is stored on the copy and included in CSV export/import. There is no official IGDB barcode field, so a miss still lets you add the title by hand with the code attached.
+The server looks the code up in a product catalog (upcitemdb, then Open Products Facts, then Go-UPC), caches the result, then searches IGDB with a cleaned title. Grocery catalogs often miss Japanese JAN / Asian SKUs; Go-UPC is the fallback for those. The barcode is stored on the copy and included in CSV export/import. There is no official IGDB barcode field, so a miss still lets you add the title by hand with the code attached.
 
 ## iOS
 

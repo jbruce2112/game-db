@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"game-db/internal/barcode"
 	"game-db/internal/igdb"
@@ -13,14 +12,14 @@ import (
 )
 
 type barcodeSearchResponse struct {
-	Barcode      string          `json:"barcode"`
-	ProductTitle string          `json:"product_title"`
-	Query        string          `json:"query"`
-	Source       string          `json:"source"`
-	Platform     string          `json:"platform,omitempty"`
-	PlatformHint string          `json:"platform_hint,omitempty"`
-	LookupError  string          `json:"lookup_error,omitempty"`
-	Games        []igdb.Game     `json:"games"`
+	Barcode      string            `json:"barcode"`
+	ProductTitle string            `json:"product_title"`
+	Query        string            `json:"query"`
+	Source       string            `json:"source"`
+	Platform     string            `json:"platform,omitempty"`
+	PlatformHint string            `json:"platform_hint,omitempty"`
+	LookupError  string            `json:"lookup_error,omitempty"`
+	Games        []igdb.Game       `json:"games"`
 	Owned        []store.OwnedCopy `json:"owned"`
 }
 
@@ -48,7 +47,7 @@ func (h *Handler) searchBarcode(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	useCache := ok && (cached.Found || time.Since(cached.UpdatedAt) < 7*24*time.Hour)
+	useCache := ok && cached.Found
 	if useCache {
 		out.ProductTitle = cached.ProductTitle
 		out.Source = cached.Source
