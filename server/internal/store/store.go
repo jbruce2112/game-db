@@ -139,11 +139,21 @@ func (s *Store) ReplaceAll(ctx context.Context, items []model.Item) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	var maxSeq int64
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(sync_seq), 0) FROM library_items`).Scan(&maxSeq); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM library_items`); err != nil {
 		return err
 	}
+	now := model.TimeUTC(time.Now())
 	for i, item := range items {
-		item.SyncSeq = int64(i + 1)
+		item.SyncSeq = maxSeq + int64(i) + 1
+		item.UpdatedAt = now
+		item.DeletedAt = nil
+		if item.CreatedAt.IsZero() {
+			item.CreatedAt = now
+		}
 		if err := insertItem(ctx, tx, item); err != nil {
 			return err
 		}

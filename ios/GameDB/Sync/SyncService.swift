@@ -33,13 +33,11 @@ final class SyncService {
         }
 
         var response = try await api.sync(cursor: cursor, changes: outgoing)
-        if response.cursor < cursor, snapshotBefore.isEmpty == false {
-            // Server seq went backwards (restored/replaced DB). Full push.
-            let locals: [LibraryItem] = try await db.read { db in
-                try LibraryItem.fetchAll(db)
-            }
-            response = try await api.sync(cursor: 0, changes: locals)
-            outgoing = locals
+        if response.cursor < cursor {
+            // Server seq went backwards (CSV replace, restored DB). Re-pull
+            // from zero. Do not upload the whole local shelf — that replays
+            // tombstones over resurrected rows and they vanish on the phone.
+            response = try await api.sync(cursor: 0, changes: outgoing)
         }
 
         let snapshot = (try? await api.libraryItems()) ?? snapshotBefore
@@ -50,11 +48,10 @@ final class SyncService {
                 item.dirty = false
                 try item.save(db)
             }
-            let pendingIDs = Set(sent.map(\.id))
             var remoteIDs = Set<String>()
             for var item in snapshot {
                 remoteIDs.insert(item.id)
-                if pendingIDs.contains(item.id) {
+                if let existing = try LibraryItem.fetchOne(db, key: item.id), existing.dirty {
                     continue
                 }
                 if item.coverId == nil, let existing = try LibraryItem.fetchOne(db, key: item.id), existing.coverId != nil {
@@ -64,7 +61,7 @@ final class SyncService {
                 try item.save(db)
             }
             for var item in sent {
-                if applied.changes.contains(where: { $0.id == item.id }) {
+                if applied.changes.contains(where: { $0.id == item.id }) || remoteIDs.contains(item.id) {
                     continue
                 }
                 item.dirty = false

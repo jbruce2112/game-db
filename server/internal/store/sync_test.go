@@ -187,6 +187,84 @@ func TestSyncClockClamp(t *testing.T) {
 	}
 }
 
+func TestReplaceAllResurrectsDeletedForStaleCursor(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	t0 := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	a := item("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "Mario", t0)
+	b := item("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "Zelda", t0)
+	if _, err := s.Insert(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Insert(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+
+	tDel := t0.Add(time.Hour)
+	bDel := b
+	bDel.DeletedAt = &tDel
+	bDel.UpdatedAt = tDel
+	if _, err := s.Replace(ctx, bDel); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.List(ctx, ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("after delete %d", len(list))
+	}
+
+	caught, err := s.Sync(ctx, 2, nil, tDel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cursor := caught.Cursor
+
+	// CSV was exported before the delete, so B comes back with its old timestamp.
+	if err := s.ReplaceAll(ctx, []model.Item{a, b}); err != nil {
+		t.Fatal(err)
+	}
+	list, err = s.List(ctx, ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("after import %d", len(list))
+	}
+
+	res, err := s.Sync(ctx, cursor, nil, tDel.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundLiveB := false
+	for _, c := range res.Changes {
+		if c.ID == b.ID {
+			foundLiveB = true
+			if c.DeletedAt != nil {
+				t.Fatalf("resurrected B still a tombstone %+v", c)
+			}
+		}
+	}
+	if !foundLiveB {
+		t.Fatalf("stale cursor %d did not pull resurrected B (new cursor %d, %d changes)", cursor, res.Cursor, len(res.Changes))
+	}
+
+	tomb := b
+	tomb.DeletedAt = &tDel
+	tomb.UpdatedAt = tDel
+	if _, err := s.Sync(ctx, res.Cursor, []model.Item{tomb}, tDel.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	list, err = s.List(ctx, ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("replayed tombstone deleted imported games, got %d", len(list))
+	}
+}
+
 func TestCRUD(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
