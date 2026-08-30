@@ -26,6 +26,18 @@ type Item struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 	DeletedAt      *time.Time `json:"deleted_at"`
 	SyncSeq        int64      `json:"sync_seq"`
+	Value          *Value     `json:"value,omitempty"`
+}
+
+// Value is a PriceCharting snapshot. Server-derived; not stored on the item row.
+type Value struct {
+	PCID        string `json:"pc_id"`
+	ProductName string `json:"product_name"`
+	ConsoleName string `json:"console_name"`
+	URL         string `json:"url"`
+	LooseCents  *int   `json:"loose_cents"`
+	CIBCents    *int   `json:"cib_cents"`
+	NewCents    *int   `json:"new_cents"`
 }
 
 func NormalizeCompleteness(s string) string {

@@ -101,7 +101,8 @@ enum LibraryCSV {
                 updatedAt: updated.isEmpty ? (created.isEmpty ? now : created) : updated,
                 deletedAt: nil,
                 syncSeq: 0,
-                dirty: true
+                dirty: true,
+                value: nil
             ))
         }
         if items.isEmpty { throw CSVError.empty }

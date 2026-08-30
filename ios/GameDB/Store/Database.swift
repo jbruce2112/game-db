@@ -68,6 +68,20 @@ enum AppDatabase {
         migrator.registerMigration("v2-barcode") { db in
             try db.execute(sql: "ALTER TABLE library_items ADD COLUMN barcode TEXT")
         }
+        migrator.registerMigration("v3-price-quotes") { db in
+            try db.execute(sql: """
+                CREATE TABLE price_quotes (
+                    item_id TEXT PRIMARY KEY NOT NULL,
+                    pc_id TEXT NOT NULL,
+                    product_name TEXT NOT NULL,
+                    console_name TEXT NOT NULL DEFAULT '',
+                    url TEXT NOT NULL DEFAULT '',
+                    loose_cents INTEGER,
+                    cib_cents INTEGER,
+                    new_cents INTEGER
+                )
+                """)
+        }
         return migrator
     }
 }

@@ -20,7 +20,23 @@ func migrate(db *sql.DB) error {
 		)`); err != nil {
 		return err
 	}
-	_, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_library_items_barcode ON library_items (barcode)`)
+	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_library_items_barcode ON library_items (barcode)`); err != nil {
+		return err
+	}
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS price_quotes (
+			item_id      TEXT PRIMARY KEY NOT NULL,
+			query_key    TEXT NOT NULL,
+			pc_id        TEXT,
+			product_name TEXT,
+			console_name TEXT,
+			url          TEXT,
+			loose_cents  INTEGER,
+			cib_cents    INTEGER,
+			new_cents    INTEGER,
+			status       TEXT NOT NULL,
+			fetched_at   TEXT NOT NULL
+		)`)
 	return err
 }
 

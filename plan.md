@@ -45,6 +45,7 @@ This is a greenfield repo (`/Users/john/src/game-db`). v1 is intentionally small
 - **One container** publishes the API and the built SPA. Browser and iOS talk to the same REST API.
 - **SQLite** is the database (WAL mode, one volume). A personal library of thousands of games does not need Postgres.
 - **IGDB** is only contacted by the **server**. Covers and search results are cached locally so the library keeps working if IGDB is down.
+- **PriceCharting** is only contacted by the **server** (optional `PRICECHARTING_TOKEN`). Quotes are cached and attached to library JSON as `value`; they are not part of LWW sync.
 - **iOS without a server:** browse / edit / manually add. IGDB search appears once a server (with IGDB credentials) is configured. No Twitch keys in the app binary.
 
 ### What “Keychain token” means on iOS
@@ -177,7 +178,6 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 **Explicitly not v1** (backlog)
 
 - Statistics view — counts by platform, region, completeness, and similar shelf breakdowns
-- PriceCharting / values
 - Wishlist, multiple collections, hardware, amiibo
 - Custom fields
 - Custom cover upload, back-of-box photos
@@ -185,7 +185,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 
-CSV export/import, barcode scan, bulk add, IGDB cover backfill, and the web platform sidebar are implemented. Statistics is the next named follow-up. iOS platform filter comes later.
+CSV export/import, barcode scan, bulk add, IGDB cover backfill, the web platform sidebar, and PriceCharting values are implemented. Statistics is the next named follow-up. iOS platform filter comes later.
 
 ## Repo layout (monorepo)
 

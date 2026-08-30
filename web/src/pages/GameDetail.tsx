@@ -1,7 +1,7 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, coverSrc } from "../api";
+import { api, coverSrc, formatUSD } from "../api";
 import type { Completeness, Region } from "../types";
 
 export default function GameDetail() {
@@ -124,6 +124,36 @@ export default function GameDetail() {
               className={inputCls}
             />
           </Field>
+          {q.data.value && (
+            <div className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm">
+              <div className="text-[#9aa3b2]">PriceCharting</div>
+              <div className="mt-1 text-[#e8eaef]">
+                {q.data.value.product_name}
+                {q.data.value.console_name ? ` · ${q.data.value.console_name}` : ""}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[#9aa3b2]">
+                <span className={q.data.completeness === "loose" ? "text-[#e2b14a]" : ""}>
+                  Loose {formatUSD(q.data.value.loose_cents) ?? "—"}
+                </span>
+                <span className={q.data.completeness === "cib" ? "text-[#e2b14a]" : ""}>
+                  CIB {formatUSD(q.data.value.cib_cents) ?? "—"}
+                </span>
+                <span className={q.data.completeness === "new" ? "text-[#e2b14a]" : ""}>
+                  New {formatUSD(q.data.value.new_cents) ?? "—"}
+                </span>
+              </div>
+              {q.data.value.url && (
+                <a
+                  href={q.data.value.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block text-xs text-[#e2b14a] hover:underline"
+                >
+                  Open on PriceCharting
+                </a>
+              )}
+            </div>
+          )}
           <p className="text-xs text-[#9aa3b2]">
             Added {new Date(q.data.created_at).toLocaleString()}
           </p>

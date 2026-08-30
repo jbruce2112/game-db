@@ -3,11 +3,14 @@ import GRDB
 
 struct SyncResult {
     var igdbConfigured: Bool
+    var pricechartingConfigured: Bool
 }
 
 final class SyncService {
     func sync(db: DatabaseQueue, api: APIClient) async throws -> SyncResult {
-        let igdb = (try? await api.me()) ?? false
+        let me = try? await api.me()
+        let igdb = me?.igdbConfigured ?? false
+        let pc = me?.pricechartingConfigured ?? false
         var cursor: Int64 = try await db.read { db in
             let row = try Row.fetchOne(db, sql: "SELECT value FROM meta WHERE key = ?", arguments: ["sync_cursor"])
             guard let row else { return 0 }
@@ -88,6 +91,6 @@ final class SyncService {
                 arguments: ["sync_cursor", String(applied.cursor)]
             )
         }
-        return SyncResult(igdbConfigured: igdb)
+        return SyncResult(igdbConfigured: igdb, pricechartingConfigured: pc)
     }
 }

@@ -17,6 +17,17 @@ export type LibraryItem = {
   updated_at: string;
   deleted_at: string | null;
   sync_seq: number;
+  value?: PriceValue | null;
+};
+
+export type PriceValue = {
+  pc_id: string;
+  product_name: string;
+  console_name: string;
+  url: string;
+  loose_cents: number | null;
+  cib_cents: number | null;
+  new_cents: number | null;
 };
 
 export type Platform = {

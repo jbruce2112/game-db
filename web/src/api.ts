@@ -23,7 +23,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  me: () => req<{ igdb_configured: boolean }>("/v1/auth/me"),
+  me: () => req<{ igdb_configured: boolean; pricecharting_configured?: boolean }>("/v1/auth/me"),
   login: (password: string) =>
     req<{ token: string }>("/v1/auth/login", {
       method: "POST",
@@ -94,4 +94,27 @@ export function coverSrc(item: { id: string; cover_url?: string | null; igdb_gam
   if (item.cover_url) return item.cover_url;
   if (item.igdb_game_id) return `/v1/library/${item.id}/cover`;
   return null;
+}
+
+export function formatUSD(cents: number | null | undefined): string | null {
+  if (cents == null || Number.isNaN(cents)) return null;
+  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+export function valueCents(item: {
+  completeness?: string;
+  value?: { loose_cents?: number | null; cib_cents?: number | null; new_cents?: number | null } | null;
+}): number | null {
+  const v = item.value;
+  if (!v) return null;
+  switch (item.completeness) {
+    case "loose":
+      return v.loose_cents ?? null;
+    case "cib":
+      return v.cib_cents ?? null;
+    case "new":
+      return v.new_cents ?? null;
+    default:
+      return v.cib_cents ?? v.loose_cents ?? v.new_cents ?? null;
+  }
 }

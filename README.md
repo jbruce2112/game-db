@@ -10,6 +10,7 @@ Game metadata and cover art come from [IGDB](https://www.igdb.com/).
 cp .env.example .env
 # set APP_PASSWORD
 # set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET (https://api-docs.igdb.com/#getting-started)
+# optional: PRICECHARTING_TOKEN (https://www.pricecharting.com/api-documentation)
 docker compose up --build
 ```
 
@@ -110,6 +111,7 @@ The process still prefers real environment variables over the file. Docker Compo
 | `COOKIE_SECURE` | no | `0` | Set `1` behind HTTPS |
 | `IGDB_CLIENT_ID` | for search | | Twitch/IGDB client id |
 | `IGDB_CLIENT_SECRET` | for search | | Twitch/IGDB secret |
+| `PRICECHARTING_TOKEN` | for values | | PriceCharting API token |
 
 ## Layout
 

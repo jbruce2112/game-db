@@ -7,22 +7,24 @@ import (
 )
 
 type Config struct {
-	AppPassword     string
-	DataDir         string
-	HTTPAddr        string
-	CookieSecure    bool
-	IGDBClientID    string
-	IGDBClientSecret string
+	AppPassword        string
+	DataDir            string
+	HTTPAddr           string
+	CookieSecure       bool
+	IGDBClientID       string
+	IGDBClientSecret   string
+	PriceChartingToken string
 }
 
 func FromEnv() (Config, error) {
 	cfg := Config{
-		AppPassword:      strings.TrimSpace(os.Getenv("APP_PASSWORD")),
-		DataDir:          getenv("DATA_DIR", "./data"),
-		HTTPAddr:         getenv("HTTP_ADDR", ":8080"),
-		CookieSecure:     truthy(os.Getenv("COOKIE_SECURE")),
-		IGDBClientID:     os.Getenv("IGDB_CLIENT_ID"),
-		IGDBClientSecret: os.Getenv("IGDB_CLIENT_SECRET"),
+		AppPassword:        strings.TrimSpace(os.Getenv("APP_PASSWORD")),
+		DataDir:            getenv("DATA_DIR", "./data"),
+		HTTPAddr:           getenv("HTTP_ADDR", ":8080"),
+		CookieSecure:       truthy(os.Getenv("COOKIE_SECURE")),
+		IGDBClientID:       os.Getenv("IGDB_CLIENT_ID"),
+		IGDBClientSecret:   os.Getenv("IGDB_CLIENT_SECRET"),
+		PriceChartingToken: strings.TrimSpace(os.Getenv("PRICECHARTING_TOKEN")),
 	}
 	if strings.TrimSpace(cfg.AppPassword) == "" {
 		return Config{}, fmt.Errorf("APP_PASSWORD is required")
@@ -32,6 +34,10 @@ func FromEnv() (Config, error) {
 
 func (c Config) IGDBConfigured() bool {
 	return c.IGDBClientID != "" && c.IGDBClientSecret != ""
+}
+
+func (c Config) PriceChartingConfigured() bool {
+	return c.PriceChartingToken != ""
 }
 
 func getenv(key, fallback string) string {

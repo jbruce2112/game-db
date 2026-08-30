@@ -17,6 +17,7 @@ struct LibraryItem: Identifiable, Equatable, Hashable {
     var deletedAt: String?
     var syncSeq: Int64
     var dirty: Bool
+    var value: PriceQuote?
 
     static func newLocal(title: String, platform: String, region: String?, completeness: String, notes: String, barcode: String? = nil) -> LibraryItem {
         let now = Self.now()
@@ -35,7 +36,8 @@ struct LibraryItem: Identifiable, Equatable, Hashable {
             updatedAt: now,
             deletedAt: nil,
             syncSeq: 0,
-            dirty: true
+            dirty: true,
+            value: nil
         )
     }
 
@@ -62,6 +64,7 @@ extension LibraryItem: Codable {
         case updatedAt = "updated_at"
         case deletedAt = "deleted_at"
         case syncSeq = "sync_seq"
+        case value
     }
 
     init(from decoder: Decoder) throws {
@@ -89,6 +92,7 @@ extension LibraryItem: Codable {
         }
         syncSeq = try c.decodeIfPresent(Int64.self, forKey: .syncSeq) ?? 0
         dirty = false
+        value = try c.decodeIfPresent(PriceQuote.self, forKey: .value)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -134,6 +138,7 @@ extension LibraryItem: FetchableRecord, PersistableRecord {
         syncSeq = row["sync_seq"]
         let flag: Int64 = row["dirty"]
         dirty = flag != 0
+        value = nil
     }
 
     func encode(to container: inout PersistenceContainer) {

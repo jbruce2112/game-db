@@ -23,6 +23,7 @@ import (
 	"game-db/internal/barcode"
 	"game-db/internal/config"
 	"game-db/internal/igdb"
+	"game-db/internal/pricecharting"
 	"game-db/internal/store"
 )
 
@@ -37,10 +38,16 @@ type Handler struct {
 	productLookup     func(ctx context.Context, codes []string) (barcode.Product, error)
 	coverBackfillBusy atomic.Bool
 	coverInflight     sync.Map
+	pc                priceSource
+	priceBackfillBusy atomic.Bool
 }
 
 func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, frontend fs.FS) *Handler {
-	return &Handler{cfg: cfg, store: st, igdb: ig, log: log, frontend: frontend}
+	h := &Handler{cfg: cfg, store: st, igdb: ig, log: log, frontend: frontend}
+	if cfg.PriceChartingConfigured() {
+		h.pc = pricecharting.New(cfg.PriceChartingToken)
+	}
+	return h
 }
 
 func (h *Handler) Router() http.Handler {
@@ -116,7 +123,10 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) me(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]bool{"igdb_configured": h.cfg.IGDBConfigured()})
+	writeJSON(w, http.StatusOK, map[string]bool{
+		"igdb_configured":          h.cfg.IGDBConfigured(),
+		"pricecharting_configured": h.cfg.PriceChartingConfigured(),
+	})
 }
 
 func (h *Handler) auth(next http.HandlerFunc) http.HandlerFunc {

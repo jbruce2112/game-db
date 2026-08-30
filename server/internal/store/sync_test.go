@@ -251,3 +251,31 @@ func TestAttachCoverURLFallsBackToOnDemand(t *testing.T) {
 		t.Fatalf("still on-demand until file exists, got %+v", after.CoverURL)
 	}
 }
+
+func TestPriceQuoteRoundTrip(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	cib := 5999
+	if err := s.UpsertPriceQuote(ctx, PriceQuote{
+		ItemID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		QueryKey: "k",
+		PCID: "3584",
+		ProductName: "Super Mario Sunshine",
+		ConsoleName: "Gamecube",
+		Status: "ok",
+		CIBCents: &cib,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, ok, err := s.PriceQuote(ctx, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	if err != nil || !ok {
+		t.Fatalf("ok %v err %v", ok, err)
+	}
+	if got.PCID != "3584" || got.CIBCents == nil || *got.CIBCents != 5999 {
+		t.Fatalf("%+v", got)
+	}
+	v := got.ToValue()
+	if v == nil || v.ProductName != "Super Mario Sunshine" {
+		t.Fatalf("%+v", v)
+	}
+}

@@ -22,6 +22,20 @@ CREATE INDEX IF NOT EXISTS idx_library_items_sync_seq ON library_items (sync_seq
 CREATE INDEX IF NOT EXISTS idx_library_items_platform ON library_items (platform);
 CREATE INDEX IF NOT EXISTS idx_library_items_title ON library_items (title COLLATE NOCASE);
 
+CREATE TABLE IF NOT EXISTS price_quotes (
+    item_id      TEXT PRIMARY KEY NOT NULL,
+    query_key    TEXT NOT NULL,
+    pc_id        TEXT,
+    product_name TEXT,
+    console_name TEXT,
+    url          TEXT,
+    loose_cents  INTEGER,
+    cib_cents    INTEGER,
+    new_cents    INTEGER,
+    status       TEXT NOT NULL,
+    fetched_at   TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS barcode_cache (
     barcode        TEXT PRIMARY KEY NOT NULL,
     product_title  TEXT,

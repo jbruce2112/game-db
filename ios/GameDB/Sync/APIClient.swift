@@ -56,11 +56,10 @@ final class APIClient {
         try throwIfNeeded(resp, data: data)
     }
 
-    func me() async throws -> Bool {
+    func me() async throws -> MeResponse {
         let (data, resp) = try await session.data(for: try request(path: "/v1/auth/me", method: "GET"))
         try throwIfNeeded(resp, data: data)
-        let parsed = try JSONDecoder().decode(MeResponse.self, from: data)
-        return parsed.igdbConfigured
+        return try JSONDecoder().decode(MeResponse.self, from: data)
     }
 
     func importCSV(_ data: Data) async throws -> Int {
@@ -167,9 +166,19 @@ final class APIClient {
 }
 
 private struct TokenResponse: Codable { var token: String }
-private struct MeResponse: Codable {
+struct MeResponse: Codable {
     var igdbConfigured: Bool
-    enum CodingKeys: String, CodingKey { case igdbConfigured = "igdb_configured" }
+    var pricechartingConfigured: Bool
+    enum CodingKeys: String, CodingKey {
+        case igdbConfigured = "igdb_configured"
+        case pricechartingConfigured = "pricecharting_configured"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        igdbConfigured = try c.decodeIfPresent(Bool.self, forKey: .igdbConfigured) ?? false
+        pricechartingConfigured = try c.decodeIfPresent(Bool.self, forKey: .pricechartingConfigured) ?? false
+    }
 }
 private struct SearchEnvelope: Codable { var games: [SearchGame] }
 private struct LibraryEnvelope: Codable { var items: [LibraryItem] }

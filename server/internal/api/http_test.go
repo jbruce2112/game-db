@@ -15,6 +15,7 @@ import (
 	"game-db/internal/barcode"
 	"game-db/internal/config"
 	"game-db/internal/model"
+	"game-db/internal/pricecharting"
 	"game-db/internal/store"
 )
 
@@ -435,5 +436,70 @@ func TestLibraryCoverOnDemandURLAndCachedFile(t *testing.T) {
 	}
 	if string(got) != string(payload) {
 		t.Fatalf("body %q", got)
+	}
+}
+
+type fakePrices struct {
+	upc    pricecharting.Product
+	search []pricecharting.Product
+}
+
+func (f fakePrices) ProductByUPC(context.Context, string) (pricecharting.Product, error) {
+	return f.upc, nil
+}
+func (f fakePrices) Search(context.Context, string) ([]pricecharting.Product, error) {
+	return f.search, nil
+}
+
+func TestLibraryAttachesPriceChartingValue(t *testing.T) {
+	h := testHandler(t)
+	h.cfg.PriceChartingToken = "test-token"
+	loose, cib := 2495, 5999
+	h.pc = fakePrices{
+		search: []pricecharting.Product{{
+			ID: "3584", Name: "Super Mario Sunshine", Console: "Gamecube",
+			Loose: &loose, CIB: &cib,
+		}},
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	item, err := h.store.Insert(context.Background(), model.Item{
+		ID:           "dddddddd-dddd-dddd-dddd-dddddddddddd",
+		Title:        "Super Mario Sunshine",
+		Platform:     "Nintendo GameCube",
+		Completeness: "cib",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.ensurePrice(context.Background(), &item)
+	if item.Value == nil || item.Value.PCID != "3584" || item.Value.CIBCents == nil || *item.Value.CIBCents != 5999 {
+		t.Fatalf("value %+v", item.Value)
+	}
+
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/library", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var list struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 1 {
+		t.Fatalf("%v", list.Items)
+	}
+	val, _ := list.Items[0]["value"].(map[string]any)
+	if val["pc_id"] != "3584" || val["product_name"] != "Super Mario Sunshine" {
+		t.Fatalf("%v", list.Items[0])
 	}
 }
