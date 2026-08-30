@@ -55,6 +55,24 @@ func TestSearchQueriesFallback(t *testing.T) {
 	}
 }
 
+func TestFoldNameStripsAccentsAndPunct(t *testing.T) {
+	if CompactName("New Pokémon Snap") != CompactName("New Pokemon Snap") {
+		t.Fatalf("%q vs %q", CompactName("New Pokémon Snap"), CompactName("New Pokemon Snap"))
+	}
+	if CompactName("WWF Warzone") != CompactName("WWF War Zone") {
+		t.Fatal(CompactName("WWF Warzone"), CompactName("WWF War Zone"))
+	}
+}
+
+func TestTokenCoverageCloseTitles(t *testing.T) {
+	if TokenCoverage("Sonic Triple Trouble", "Sonic the Hedgehog: Triple Trouble") < 0.8 {
+		t.Fatal("sonic triple")
+	}
+	if TokenCoverage("Deadly Premonitions: The Director's Cut", "Deadly Premonition: Director's Cut") < 0.8 {
+		t.Fatal("premonition")
+	}
+}
+
 func TestNameScorePrefersExactOverPack(t *testing.T) {
 	q := "Shin Megami Tensei III Nocturne HD Remaster"
 	base := NameScore("Shin Megami Tensei III: Nocturne - HD Remaster", q, []string{"Nintendo Switch"}, "nintendo switch")
@@ -163,5 +181,11 @@ func TestParseGoUPC(t *testing.T) {
 	}
 	if got := parseGoUPC(`<title>Invalid Value — Go-UPC</title>`); got != "" {
 		t.Fatalf("invalid %q", got)
+	}
+}
+
+func TestColoursCoverage(t *testing.T) {
+	if TokenCoverage("Sonic Colours: Ultimate", "Sonic Colors: Ultimate") < 0.8 {
+		t.Fatalf("coverage %v", TokenCoverage("Sonic Colours: Ultimate", "Sonic Colors: Ultimate"))
 	}
 }

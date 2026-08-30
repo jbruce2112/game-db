@@ -309,7 +309,33 @@ func stripEditions(s string) string {
 	return s
 }
 
+func stripDiacritics(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case 'é', 'è', 'ê', 'ë', 'É', 'È', 'Ê', 'Ë':
+			b.WriteByte('e')
+		case 'á', 'à', 'ä', 'â', 'å', 'Á', 'À', 'Ä', 'Â':
+			b.WriteByte('a')
+		case 'í', 'ì', 'ï', 'î', 'Í', 'Ì':
+			b.WriteByte('i')
+		case 'ó', 'ò', 'ö', 'ô', 'Ó', 'Ö':
+			b.WriteByte('o')
+		case 'ú', 'ù', 'ü', 'û', 'Ú', 'Ü':
+			b.WriteByte('u')
+		case 'ñ', 'Ñ':
+			b.WriteByte('n')
+		case 'ç', 'Ç':
+			b.WriteByte('c')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 func foldName(s string) string {
+	s = stripDiacritics(s)
 	var b strings.Builder
 	for _, r := range strings.ToLower(s) {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
@@ -321,6 +347,69 @@ func foldName(s string) string {
 	return strings.Join(strings.Fields(b.String()), " ")
 }
 
+func CompactName(s string) string {
+	return strings.ReplaceAll(foldName(s), " ", "")
+}
+
+func canonToken(t string) string {
+	switch t {
+	case "vol":
+		return "volume"
+	case "colours", "colors", "colour":
+		return "color"
+	case "grey":
+		return "gray"
+	case "i":
+		return "1"
+	case "ii":
+		return "2"
+	case "iii":
+		return "3"
+	case "iv":
+		return "4"
+	case "v":
+		return "5"
+	case "vi":
+		return "6"
+	}
+	if len(t) > 4 && strings.HasSuffix(t, "s") && !strings.HasSuffix(t, "ss") {
+		return t[:len(t)-1]
+	}
+	return t
+}
+
+func tokenSet(s string) map[string]struct{} {
+	out := map[string]struct{}{}
+	for _, t := range strings.Fields(foldName(s)) {
+		out[canonToken(t)] = struct{}{}
+	}
+	return out
+}
+
+var stopTokens = map[string]struct{}{
+	"the": {}, "a": {}, "an": {}, "of": {}, "and": {},
+}
+
+// TokenCoverage is how many non-stop query tokens appear in name (0–1).
+func TokenCoverage(query, name string) float64 {
+	qset := tokenSet(query)
+	nset := tokenSet(name)
+	var need, hit int
+	for t := range qset {
+		if _, stop := stopTokens[t]; stop {
+			continue
+		}
+		need++
+		if _, ok := nset[t]; ok {
+			hit++
+		}
+	}
+	if need == 0 {
+		return 0
+	}
+	return float64(hit) / float64(need)
+}
+
 // NameScore ranks an IGDB title against the catalog query. Higher is better.
 func NameScore(name, query string, platforms []string, hint string) int {
 	n := foldName(name)
@@ -329,8 +418,10 @@ func NameScore(name, query string, platforms []string, hint string) int {
 		return 0
 	}
 	score := 0
-	if n == q {
+	if n == q || CompactName(name) == CompactName(query) {
 		score += 100
+	} else if cn, cq := CompactName(name), CompactName(query); len(cn) >= 8 && len(cq) >= 8 && (strings.HasPrefix(cq, cn) || strings.HasPrefix(cn, cq)) {
+		score += 70
 	} else if strings.HasPrefix(n, q) || strings.HasPrefix(q, n) {
 		score += 70
 	} else if strings.Contains(n, q) {
@@ -338,20 +429,11 @@ func NameScore(name, query string, platforms []string, hint string) int {
 	} else if strings.Contains(q, n) {
 		score += 40
 	}
+	cover := TokenCoverage(query, name)
+	score += int(cover * 40)
 	ntoks := strings.Fields(n)
 	qtoks := strings.Fields(q)
-	set := map[string]struct{}{}
-	for _, t := range ntoks {
-		set[t] = struct{}{}
-	}
-	overlap := 0
-	for _, t := range qtoks {
-		if _, ok := set[t]; ok {
-			overlap++
-		}
-	}
-	score += overlap * 8
-	score -= max(0, len(ntoks)-len(qtoks)) * 3
+	score -= max(0, len(ntoks)-len(qtoks)) * 2
 	if hint != "" {
 		h := strings.ToLower(hint)
 		for _, p := range platforms {

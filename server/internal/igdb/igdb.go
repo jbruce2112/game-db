@@ -60,6 +60,30 @@ func CoverURL(imageID string) string {
 	return coverBase + imageID + ".jpg"
 }
 
+func (c *Client) SearchGamesContains(ctx context.Context, q string, platformID int64) ([]Game, error) {
+	q = strings.TrimSpace(q)
+	if len(q) < 3 {
+		return nil, nil
+	}
+	where := fmt.Sprintf(`name ~ *"%s*"`, escape(q))
+	if platformID > 0 {
+		where += fmt.Sprintf(` & platforms = (%d)`, platformID)
+	}
+	body := fmt.Sprintf(
+		`fields name,summary,cover.image_id,platforms.id,platforms.name,first_release_date; where %s; limit 25;`,
+		where,
+	)
+	var raw []igdbGame
+	if err := c.post(ctx, "/games", body, &raw); err != nil {
+		return nil, err
+	}
+	out := make([]Game, 0, len(raw))
+	for _, g := range raw {
+		out = append(out, g.toGame())
+	}
+	return out, nil
+}
+
 func (c *Client) SearchGames(ctx context.Context, q string, platformID int64) ([]Game, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -212,7 +236,7 @@ func (c *Client) post(ctx context.Context, path, body string, dest any) error {
 func (c *Client) throttle() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	wait := 260*time.Millisecond - time.Since(c.lastReq)
+	wait := 350*time.Millisecond - time.Since(c.lastReq)
 	if wait > 0 {
 		time.Sleep(wait)
 	}

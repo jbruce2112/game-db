@@ -121,11 +121,6 @@ func PickGame(title string, platformID int64, games []Game) *Game {
 	if len(games) == 0 || strings.TrimSpace(title) == "" {
 		return nil
 	}
-	norm := barcode.SearchQuery(title)
-	if norm == "" {
-		norm = title
-	}
-
 	onPlatform := func(g Game) bool {
 		if platformID <= 0 {
 			return true
@@ -141,7 +136,8 @@ func PickGame(title string, platformID int64, games []Game) *Game {
 	var exact []Game
 	for i := range games {
 		if strings.EqualFold(strings.TrimSpace(games[i].Name), strings.TrimSpace(title)) ||
-			foldPlat(games[i].Name) == foldPlat(title) {
+			foldPlat(games[i].Name) == foldPlat(title) ||
+			barcode.CompactName(games[i].Name) == barcode.CompactName(title) {
 			exact = append(exact, games[i])
 		}
 	}
@@ -162,19 +158,209 @@ func PickGame(title string, platformID int64, games []Game) *Game {
 	}
 
 	best := pool[0]
-	bestScore := barcode.NameScore(best.Name, norm, platformNames(best), "")
+	bestScore := barcode.NameScore(best.Name, title, platformNames(best), "")
+	bestCover := coverage(title, best.Name)
 	for _, g := range pool[1:] {
-		s := barcode.NameScore(g.Name, norm, platformNames(g), "")
-		if s > bestScore {
+		s := barcode.NameScore(g.Name, title, platformNames(g), "")
+		c := coverage(title, g.Name)
+		if s > bestScore || (s == bestScore && c > bestCover) {
 			best = g
 			bestScore = s
+			bestCover = c
 		}
 	}
-	if len(exact) == 0 && bestScore < 70 {
+	if len(exact) == 0 && bestScore < 55 && bestCover < 0.8 {
 		return nil
 	}
 	out := best
 	return &out
+}
+
+func coverage(title, name string) float64 {
+	c := barcode.TokenCoverage(title, name)
+	words := strings.Fields(softenPunct(title))
+	if len(words) >= 3 {
+		shorter := strings.Join(words[:len(words)-1], " ")
+		if alt := barcode.TokenCoverage(shorter, name); alt > c {
+			c = alt
+		}
+	}
+	return c
+}
+
+func softenPunct(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte(' ')
+		}
+	}
+	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+func romanSwap(s string) string {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return s
+	}
+	i := len(fields) - 1
+	switch strings.ToLower(fields[i]) {
+	case "1":
+		fields[i] = "I"
+	case "2":
+		fields[i] = "II"
+	case "3":
+		fields[i] = "III"
+	case "4":
+		fields[i] = "IV"
+	case "5":
+		fields[i] = "V"
+	case "6":
+		fields[i] = "VI"
+	case "i":
+		fields[i] = "1"
+	case "ii":
+		fields[i] = "2"
+	case "iii":
+		fields[i] = "3"
+	case "iv":
+		fields[i] = "4"
+	case "v":
+		fields[i] = "5"
+	case "vi":
+		fields[i] = "6"
+	default:
+		return s
+	}
+	return strings.Join(fields, " ")
+}
+
+func splitCompound(s string) string {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return s
+	}
+	last := fields[len(fields)-1]
+	low := strings.ToLower(last)
+	for _, suf := range []string{"zone", "land", "world", "mania"} {
+		if len(low) > len(suf)+2 && strings.HasSuffix(low, suf) {
+			head := last[:len(last)-len(suf)]
+			fields[len(fields)-1] = head
+			fields = append(fields, last[len(last)-len(suf):])
+			return strings.Join(fields, " ")
+		}
+	}
+	return s
+}
+
+func applySpelling(s string) string {
+	fields := strings.Fields(s)
+	for i, f := range fields {
+		low := strings.ToLower(f)
+		switch low {
+		case "colours":
+			fields[i] = "Colors"
+		case "colour":
+			fields[i] = "Color"
+		case "grey":
+			fields[i] = "Gray"
+		}
+	}
+	return strings.Join(fields, " ")
+}
+
+func collapseInitials(s string) string {
+	fields := strings.Fields(s)
+	var out []string
+	for i := 0; i < len(fields); {
+		if len([]rune(fields[i])) == 1 {
+			j := i
+			var run strings.Builder
+			for j < len(fields) && len([]rune(fields[j])) == 1 {
+				run.WriteString(fields[j])
+				j++
+			}
+			if j-i >= 2 {
+				out = append(out, run.String())
+				i = j
+				continue
+			}
+		}
+		out = append(out, fields[i])
+		i++
+	}
+	return strings.Join(out, " ")
+}
+
+// SearchTitles are IGDB search strings derived from a collector title
+// (punctuation, spelling, shorter prefixes).
+func SearchTitles(title string) []string {
+	var out []string
+	add := func(s string) {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return
+		}
+		for _, e := range out {
+			if strings.EqualFold(e, s) {
+				return
+			}
+		}
+		out = append(out, s)
+	}
+	add(title)
+	soft := softenPunct(title)
+	add(soft)
+	add(romanSwap(soft))
+	add(splitCompound(soft))
+	add(applySpelling(soft))
+	collapsed := collapseInitials(soft)
+	add(collapsed)
+	if dotted, compact := leadingAcronym(soft); compact != "" {
+		add(dotted)
+		add(compact)
+		rest := strings.TrimSpace(strings.TrimPrefix(collapsed, compact))
+		if rest != "" {
+			add(compact + " " + rest)
+		}
+	}
+	for _, q := range barcode.SearchQueries(soft) {
+		add(q)
+	}
+	for _, base := range []string{soft, collapsed} {
+		words := strings.Fields(base)
+		for n := len(words) - 1; n >= 2; n-- {
+			add(strings.Join(words[:n], " "))
+		}
+	}
+	return out
+}
+
+// LeadingAcronym pulls a dotted form (F.E.A.R.) and compact form (FEAR)
+// from a collector title that starts with initials.
+func LeadingAcronym(title string) (dotted, compact string) {
+	return leadingAcronym(softenPunct(title))
+}
+
+func leadingAcronym(soft string) (dotted, compact string) {
+	fields := strings.Fields(soft)
+	n := 0
+	for n < len(fields) && len([]rune(fields[n])) == 1 {
+		n++
+	}
+	if n < 2 {
+		return "", ""
+	}
+	var d, c strings.Builder
+	for _, f := range fields[:n] {
+		u := strings.ToUpper(f)
+		c.WriteString(u)
+		d.WriteString(u)
+		d.WriteByte('.')
+	}
+	return d.String(), c.String()
 }
 
 func platformNames(g Game) []string {
