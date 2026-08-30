@@ -5,13 +5,30 @@ struct ShelfRow: Equatable {
     var count: Int
 }
 
+struct ShelfValueRow: Equatable {
+    var name: String
+    var cents: Int
+}
+
+struct ShelfPriceRow: Equatable {
+    var id: String
+    var title: String
+    var platform: String
+    var cents: Int
+}
+
 struct ShelfStats: Equatable {
     var total: Int
     var withCover: Int
     var withBarcode: Int
+    var priced: Int
+    var shelfCents: Int?
+    var medianCents: Int?
     var platforms: [ShelfRow]
     var regions: [ShelfRow]
     var completeness: [ShelfRow]
+    var valueByPlatform: [ShelfValueRow]
+    var mostExpensive: [ShelfPriceRow]
 
     static let empty = ShelfStats(items: [])
 
@@ -20,7 +37,17 @@ struct ShelfStats: Equatable {
         return "\(Int((Double(n) / Double(total) * 100).rounded()))%"
     }
 
-    init(items: [LibraryItem]) {
+    static func median(_ values: [Int]) -> Int? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        let mid = sorted.count / 2
+        if sorted.count % 2 == 1 {
+            return sorted[mid]
+        }
+        return Int((Double(sorted[mid - 1] + sorted[mid]) / 2).rounded())
+    }
+
+    init(items: [LibraryItem], quotes: [String: PriceQuote] = [:]) {
         let live = items.filter { ($0.deletedAt ?? "").isEmpty }
         total = live.count
         withCover = live.filter { !($0.coverId ?? "").isEmpty }.count
@@ -29,12 +56,26 @@ struct ShelfStats: Equatable {
         var plat: [String: Int] = [:]
         var region: [String: Int] = [:]
         var complete: [String: Int] = [:]
+        var platValue: [String: Int] = [:]
+        var pricedRows: [ShelfPriceRow] = []
         for item in live {
             plat[item.platform, default: 0] += 1
             let r = item.region ?? ""
             region[r, default: 0] += 1
             let c = item.completeness.isEmpty ? "unknown" : item.completeness
             complete[c, default: 0] += 1
+            if let cents = quotes[item.id]?.cents(for: item.completeness) {
+                platValue[item.platform, default: 0] += cents
+                pricedRows.append(ShelfPriceRow(id: item.id, title: item.title, platform: item.platform, cents: cents))
+            }
+        }
+        priced = pricedRows.count
+        if priced > 0 {
+            shelfCents = pricedRows.reduce(0) { $0 + $1.cents }
+            medianCents = Self.median(pricedRows.map(\.cents))
+        } else {
+            shelfCents = nil
+            medianCents = nil
         }
         platforms = plat.keys.sorted { (plat[$0] ?? 0) > (plat[$1] ?? 0) || ((plat[$0] ?? 0) == (plat[$1] ?? 0) && $0 < $1) }
             .map { ShelfRow(name: $0, count: plat[$0] ?? 0) }
@@ -50,5 +91,10 @@ struct ShelfStats: Equatable {
             guard let n = complete[key], n > 0 else { return nil }
             return ShelfRow(name: completeLabels[key] ?? key, count: n)
         }
+        valueByPlatform = platValue.keys
+            .filter { (platValue[$0] ?? 0) > 0 }
+            .sorted { (platValue[$0] ?? 0) > (platValue[$1] ?? 0) || ((platValue[$0] ?? 0) == (platValue[$1] ?? 0) && $0 < $1) }
+            .map { ShelfValueRow(name: $0, cents: platValue[$0] ?? 0) }
+        mostExpensive = Array(pricedRows.sorted { $0.cents > $1.cents || ($0.cents == $1.cents && $0.title < $1.title) }.prefix(10))
     }
 }

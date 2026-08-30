@@ -49,7 +49,7 @@ final class LibraryStore {
     }
 
     var stats: ShelfStats {
-        ShelfStats(items: items)
+        ShelfStats(items: items, quotes: quotes)
     }
 
     var platformCounts: [(name: String, count: Int)] {
