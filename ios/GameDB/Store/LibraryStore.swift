@@ -182,16 +182,26 @@ final class LibraryStore {
         }
     }
 
+    func cachedCoverImage(for coverId: String?) -> UIImage? {
+        guard let coverId, !coverId.isEmpty else { return nil }
+        if let cached = coverCache[coverId] {
+            return cached
+        }
+        if let img = CoverFile.image(for: coverId) {
+            coverCache[coverId] = img
+            return img
+        }
+        return nil
+    }
+
     func coverImage(for coverId: String?) async -> UIImage? {
         guard let coverId, !coverId.isEmpty else { return nil }
         if let cached = coverCache[coverId] {
             return cached
         }
-        for url in AppDatabase.coverURLCandidates(id: coverId) {
-            if let data = try? Data(contentsOf: url), let img = UIImage(data: data) {
-                coverCache[coverId] = img
-                return img
-            }
+        if let img = CoverFile.image(for: coverId) {
+            coverCache[coverId] = img
+            return img
         }
         guard isPaired, let data = try? await api.cover(id: coverId), let img = UIImage(data: data) else {
             return nil

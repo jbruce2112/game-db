@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import UIKit
 
 enum AppDatabase {
     static func open() throws -> DatabaseQueue {
@@ -69,5 +70,17 @@ enum AppDatabase {
             try db.execute(sql: "ALTER TABLE library_items ADD COLUMN barcode TEXT")
         }
         return migrator
+    }
+}
+
+enum CoverFile {
+    static func image(for coverId: String?) -> UIImage? {
+        guard let coverId, !coverId.isEmpty else { return nil }
+        for url in AppDatabase.coverURLCandidates(id: coverId) {
+            if let img = UIImage(contentsOfFile: url.path) {
+                return img
+            }
+        }
+        return nil
     }
 }

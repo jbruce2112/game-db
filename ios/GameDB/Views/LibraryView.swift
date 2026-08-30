@@ -8,6 +8,8 @@ struct LibraryView: View {
     @State private var showSettings = false
     @State private var csvShare: CSVShare?
     @State private var compactColumn: NavigationSplitViewColumn = .detail
+    @State private var pendingDelete: LibraryItem?
+    @State private var openFromMenu: LibraryItem?
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
@@ -52,22 +54,22 @@ struct LibraryView: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
                             ForEach(store.filtered) { item in
                                 NavigationLink(value: item) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        CoverView(item: item)
-                                            .frame(maxWidth: .infinity)
-                                            .aspectRatio(3/4, contentMode: .fit)
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        Text(item.title)
-                                            .font(.caption)
-                                            .foregroundStyle(.primary)
-                                            .lineLimit(2)
-                                        Text(item.platform)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
+                                    GameGridCell(item: item)
                                 }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button("View details", systemImage: "info.circle") {
+                                        openFromMenu = item
+                                    }
+                                    Button("Delete", systemImage: "trash", role: .destructive) {
+                                        pendingDelete = item
+                                    }
+                                } preview: {
+                                    GamePeekPreview(
+                                        item: item,
+                                        image: store.cachedCoverImage(for: item.coverId)
+                                    )
+                                }
                             }
                         }
                         .padding()
@@ -78,6 +80,9 @@ struct LibraryView: View {
             }
             .navigationTitle(store.platformFilter.isEmpty ? "Library" : store.platformFilter)
             .navigationDestination(for: LibraryItem.self) { item in
+                GameDetailView(itemID: item.id)
+            }
+            .navigationDestination(item: $openFromMenu) { item in
                 GameDetailView(itemID: item.id)
             }
             .toolbar {
@@ -122,6 +127,22 @@ struct LibraryView: View {
                 FloatingSearchBar()
                     .padding(.bottom, 10)
             }
+            .confirmationDialog(
+                "Delete \(pendingDelete?.title ?? "this game")?",
+                isPresented: Binding(
+                    get: { pendingDelete != nil },
+                    set: { if !$0 { pendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let pendingDelete {
+                        try? store.delete(pendingDelete)
+                    }
+                    pendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { pendingDelete = nil }
+            }
         }
     }
 
@@ -137,6 +158,58 @@ struct LibraryView: View {
             return "Try a different title or clear the filter."
         }
         return "Add a game, even while offline."
+    }
+}
+
+private struct GameGridCell: View {
+    var item: LibraryItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            CoverView(item: item)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(3/4, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            Text(item.title)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+            Text(item.platform)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+struct GamePeekPreview: View {
+    var item: LibraryItem
+    var image: UIImage?
+
+    /// Context-menu previews are snapshotted in an isolated host with no
+    /// proposed size. A flexible VStack collapsed to empty; pin 3:4 box art.
+    var body: some View {
+        ZStack {
+            Color(white: 0.12)
+            if let resolvedImage {
+                Image(uiImage: resolvedImage)
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Text(item.title)
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(16)
+            }
+        }
+        .frame(width: 240, height: 320)
+        .clipped()
+    }
+
+    private var resolvedImage: UIImage? {
+        image ?? CoverFile.image(for: item.coverId)
     }
 }
 
