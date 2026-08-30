@@ -47,6 +47,19 @@ func TestPickGameExactNamePrefersPlatform(t *testing.T) {
 	}
 }
 
+func TestPickGameDoublePackUsesBundle(t *testing.T) {
+	ps4 := []Platform{{ID: 48, Name: "PlayStation 4"}}
+	games := []Game{
+		{ID: 7342, Name: "Inside", Platforms: ps4},
+		{ID: 165866, Name: "Inside & Limbo Bundle", Platforms: ps4},
+		{ID: 1331, Name: "Limbo", Platforms: ps4},
+	}
+	got := PickGame("Inside - Limbo Double Pack", 48, games)
+	if got == nil || got.ID != 165866 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
 func TestPickGameRejectsWeakMatch(t *testing.T) {
 	games := []Game{
 		{ID: 9, Name: "Unrelated Fighter", Platforms: []Platform{{ID: 48}}},
@@ -145,6 +158,27 @@ func TestSearchTitlesRomanNumerals(t *testing.T) {
 	}}
 	got := PickGame("Shin Megami Tensei 5", 130, games)
 	if got == nil || got.ID != 26775 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestSearchTitlesDropsLeadingFranchise(t *testing.T) {
+	qs := SearchTitles("Spintires: MudRunner - American Wilds")
+	found := false
+	for _, q := range qs {
+		if q == "MudRunner American Wilds" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("%v", qs)
+	}
+	ps4 := []Platform{{ID: 48, Name: "PlayStation 4"}}
+	got := PickGame("Spintires: MudRunner - American Wilds", 48, []Game{
+		{ID: 54789, Name: "MudRunner", Platforms: ps4},
+		{ID: 119105, Name: "MudRunner: American Wilds Edition", Platforms: ps4},
+	})
+	if got == nil || got.ID != 119105 {
 		t.Fatalf("got %+v", got)
 	}
 }

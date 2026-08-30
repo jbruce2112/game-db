@@ -334,6 +334,9 @@ func SearchTitles(title string) []string {
 		for n := len(words) - 1; n >= 2; n-- {
 			add(strings.Join(words[:n], " "))
 		}
+		for n := 1; n <= len(words)-2; n++ {
+			add(strings.Join(words[n:], " "))
+		}
 	}
 	return out
 }

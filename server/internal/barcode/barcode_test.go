@@ -64,6 +64,12 @@ func TestFoldNameStripsAccentsAndPunct(t *testing.T) {
 	}
 }
 
+func TestTokenCoverageDoublePack(t *testing.T) {
+	if TokenCoverage("Inside - Limbo Double Pack", "Inside & Limbo Bundle") < 0.8 {
+		t.Fatalf("coverage %v", TokenCoverage("Inside - Limbo Double Pack", "Inside & Limbo Bundle"))
+	}
+}
+
 func TestTokenCoverageCloseTitles(t *testing.T) {
 	if TokenCoverage("Sonic Triple Trouble", "Sonic the Hedgehog: Triple Trouble") < 0.8 {
 		t.Fatal("sonic triple")

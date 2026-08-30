@@ -378,6 +378,27 @@ func canonToken(t string) string {
 	return t
 }
 
+func tokenPrefix(a, b string) bool {
+	at := strings.Fields(a)
+	bt := strings.Fields(b)
+	if len(at) == 0 || len(bt) == 0 {
+		return false
+	}
+	short, long := at, bt
+	if len(at) > len(bt) {
+		short, long = bt, at
+	}
+	if len(short) < 2 {
+		return false
+	}
+	for i, t := range short {
+		if canonToken(t) != canonToken(long[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func tokenSet(s string) map[string]struct{} {
 	out := map[string]struct{}{}
 	for _, t := range strings.Fields(foldName(s)) {
@@ -388,6 +409,8 @@ func tokenSet(s string) map[string]struct{} {
 
 var stopTokens = map[string]struct{}{
 	"the": {}, "a": {}, "an": {}, "of": {}, "and": {},
+	"pack": {}, "bundle": {}, "collection": {}, "compilation": {},
+	"double": {}, "combo": {},
 }
 
 // TokenCoverage is how many non-stop query tokens appear in name (0–1).
@@ -420,9 +443,9 @@ func NameScore(name, query string, platforms []string, hint string) int {
 	score := 0
 	if n == q || CompactName(name) == CompactName(query) {
 		score += 100
-	} else if cn, cq := CompactName(name), CompactName(query); len(cn) >= 8 && len(cq) >= 8 && (strings.HasPrefix(cq, cn) || strings.HasPrefix(cn, cq)) {
+	} else if tokenPrefix(n, q) {
 		score += 70
-	} else if strings.HasPrefix(n, q) || strings.HasPrefix(q, n) {
+	} else if cn, cq := CompactName(name), CompactName(query); len(cn) >= 8 && len(cq) >= 8 && (strings.HasPrefix(cq, cn) || strings.HasPrefix(cn, cq)) {
 		score += 70
 	} else if strings.Contains(n, q) {
 		score += 50
@@ -430,7 +453,7 @@ func NameScore(name, query string, platforms []string, hint string) int {
 		score += 40
 	}
 	cover := TokenCoverage(query, name)
-	score += int(cover * 40)
+	score += int(cover * 80)
 	ntoks := strings.Fields(n)
 	qtoks := strings.Fields(q)
 	score -= max(0, len(ntoks)-len(qtoks)) * 2
