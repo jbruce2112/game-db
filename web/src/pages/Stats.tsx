@@ -28,7 +28,12 @@ export default function Stats() {
   const items = lib.data?.items ?? [];
   const stats = useMemo(() => buildStats(items), [items]);
   const [yearPlatform, setYearPlatform] = useState("");
+  const [cumulativePlatform, setCumulativePlatform] = useState("");
   const yearRows = useMemo(() => countsByYear(items, yearPlatform), [items, yearPlatform]);
+  const cumulativeRows = useMemo(
+    () => cumulative(countsByYear(items, cumulativePlatform)),
+    [items, cumulativePlatform],
+  );
   const qc = useQueryClient();
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState("");
@@ -84,10 +89,22 @@ export default function Stats() {
           </div>
 
           <YearSection
+            title="Added by year"
+            footer="Copies added in each year. Empty years are shown as zero."
+            filterLabel="Filter added-by-year chart by platform"
             platforms={stats.platforms.map((p) => p.name)}
             platform={yearPlatform}
             onPlatform={setYearPlatform}
             rows={yearRows}
+          />
+          <YearSection
+            title="Shelf size"
+            footer="Running total of copies on the shelf by the end of each year."
+            filterLabel="Filter shelf-size chart by platform"
+            platforms={stats.platforms.map((p) => p.name)}
+            platform={cumulativePlatform}
+            onPlatform={setCumulativePlatform}
+            rows={cumulativeRows}
           />
 
           {stats.priced > 0 && stats.shelfCents != null && (
@@ -158,11 +175,17 @@ function CacheClear({
 }
 
 function YearSection({
+  title,
+  footer,
+  filterLabel,
   platforms,
   platform,
   onPlatform,
   rows,
 }: {
+  title: string;
+  footer: string;
+  filterLabel: string;
   platforms: string[];
   platform: string;
   onPlatform: (value: string) => void;
@@ -171,12 +194,12 @@ function YearSection({
   return (
     <section>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-sm font-medium text-[#9aa3b2]">Added by year</h2>
+        <h2 className="text-sm font-medium text-[#9aa3b2]">{title}</h2>
         <select
           value={platform}
           onChange={(e) => onPlatform(e.target.value)}
           className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-1.5 text-sm"
-          aria-label="Filter added-by-year chart by platform"
+          aria-label={filterLabel}
         >
           <option value="">All platforms</option>
           {platforms.map((name) => (
@@ -191,7 +214,7 @@ function YearSection({
       ) : (
         <>
           <YearChart rows={rows} />
-          <p className="mt-2 text-xs text-[#9aa3b2]">Uses each copy’s added date. Empty years are shown as zero.</p>
+          <p className="mt-2 text-xs text-[#9aa3b2]">{footer}</p>
         </>
       )}
     </section>
@@ -201,7 +224,7 @@ function YearSection({
 function YearChart({ rows }: { rows: { year: number; count: number }[] }) {
   const w = 640;
   const h = 220;
-  const padL = 36;
+  const padL = 44;
   const padR = 16;
   const padT = 16;
   const padB = 28;
@@ -432,6 +455,14 @@ export function countsByYear(items: LibraryItem[], platform = "") {
     rows.push({ year: y, count: map.get(y) ?? 0 });
   }
   return rows;
+}
+
+export function cumulative(rows: { year: number; count: number }[]) {
+  let sum = 0;
+  return rows.map((row) => {
+    sum += row.count;
+    return { year: row.year, count: sum };
+  });
 }
 
 function yearOf(iso: string) {

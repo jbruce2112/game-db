@@ -4,6 +4,7 @@ import SwiftUI
 struct StatsView: View {
     @Environment(LibraryStore.self) private var store
     @State private var yearPlatform = ""
+    @State private var cumulativePlatform = ""
     @State private var confirmClear = false
     @State private var clearing = false
 
@@ -28,7 +29,20 @@ struct StatsView: View {
                         hero("With cover", value: ShelfStats.percent(stats.withCover, of: stats.total))
                         hero("With barcode", value: ShelfStats.percent(stats.withBarcode, of: stats.total))
                     }
-                    yearChart(stats)
+                    yearChart(
+                        title: "Added by year",
+                        footer: "Copies added in each year. Empty years are shown as zero.",
+                        platforms: stats.platforms,
+                        platform: $yearPlatform,
+                        rows: stats.countsByYear(platform: yearPlatform)
+                    )
+                    yearChart(
+                        title: "Shelf size",
+                        footer: "Running total of copies on the shelf by the end of each year.",
+                        platforms: stats.platforms,
+                        platform: $cumulativePlatform,
+                        rows: stats.cumulativeByYear(platform: cumulativePlatform)
+                    )
                     if let shelf = stats.shelfCents, stats.priced > 0 {
                         Section {
                             hero("Shelf", value: PriceQuote.usd(shelf))
@@ -85,12 +99,17 @@ struct StatsView: View {
         }
     }
 
-    private func yearChart(_ stats: ShelfStats) -> some View {
-        let rows = stats.countsByYear(platform: yearPlatform)
-        return Section {
-            Picker("Platform", selection: $yearPlatform) {
+    private func yearChart(
+        title: String,
+        footer: String,
+        platforms: [ShelfRow],
+        platform: Binding<String>,
+        rows: [ShelfYearRow]
+    ) -> some View {
+        Section {
+            Picker("Platform", selection: platform) {
                 Text("All platforms").tag("")
-                ForEach(stats.platforms, id: \.name) { row in
+                ForEach(platforms, id: \.name) { row in
                     Text(row.name).tag(row.name)
                 }
             }
@@ -131,9 +150,9 @@ struct StatsView: View {
                 .accessibilityLabel(yearChartLabel(rows))
             }
         } header: {
-            Text("Added by year")
+            Text(title)
         } footer: {
-            Text("Uses each copy’s added date. Empty years are shown as zero.")
+            Text(footer)
         }
     }
 

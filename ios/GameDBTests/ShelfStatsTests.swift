@@ -73,6 +73,14 @@ final class ShelfStatsTests: XCTestCase {
         XCTAssertEqual(stats.countsByYear(platform: "Nintendo Switch"), [
             ShelfYearRow(year: 2023, count: 2),
         ])
+        XCTAssertEqual(stats.cumulativeByYear(), [
+            ShelfYearRow(year: 2023, count: 2),
+            ShelfYearRow(year: 2024, count: 2),
+            ShelfYearRow(year: 2025, count: 3),
+        ])
+        XCTAssertEqual(stats.cumulativeByYear(platform: "Nintendo Switch"), [
+            ShelfYearRow(year: 2023, count: 2),
+        ])
         XCTAssertEqual(ShelfStats.year(from: "2023-11-12T00:00:00Z"), 2023)
     }
 

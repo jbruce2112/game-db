@@ -131,4 +131,12 @@ struct ShelfStats: Equatable {
         }
         return (minY...maxY).map { ShelfYearRow(year: $0, count: map[$0] ?? 0) }
     }
+
+    func cumulativeByYear(platform: String = "") -> [ShelfYearRow] {
+        var sum = 0
+        return countsByYear(platform: platform).map { row in
+            sum += row.count
+            return ShelfYearRow(year: row.year, count: sum)
+        }
+    }
 }
