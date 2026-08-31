@@ -230,7 +230,7 @@ export default function Library({
           )}
 
           {items.length > 0 && view === "grid" && (
-            <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <ul className="mt-6 grid grid-cols-2 items-start gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {items.map((item) => (
                 <li key={item.id}>
                   <CoverCard item={item} />
@@ -335,9 +335,7 @@ function PlatformRow({
 function CoverCard({ item }: { item: LibraryItem }) {
   return (
     <Link to={`/game/${item.id}`} className="group block">
-      <div className="aspect-[3/4] overflow-hidden rounded-lg border border-[#2a2e38] bg-[#16181f]">
-        <CoverImage item={item} />
-      </div>
+      <CoverImage item={item} layout="grid" />
       <div className="mt-2 truncate text-sm font-medium group-hover:text-[#e2b14a]">
         {item.title}
       </div>
@@ -353,9 +351,5 @@ function CoverCard({ item }: { item: LibraryItem }) {
 }
 
 function CoverThumb({ item }: { item: LibraryItem }) {
-  return (
-    <div className="h-14 w-10 shrink-0 overflow-hidden rounded border border-[#2a2e38] bg-[#16181f]">
-      <CoverImage item={item} />
-    </div>
-  );
+  return <CoverImage item={item} layout="thumb" />;
 }

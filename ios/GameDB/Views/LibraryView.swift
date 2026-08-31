@@ -209,8 +209,6 @@ private struct GameGridCell: View {
         VStack(alignment: .leading, spacing: 6) {
             CoverView(item: item)
                 .frame(maxWidth: .infinity)
-                .aspectRatio(3/4, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             Text(item.title)
                 .font(.caption)
                 .foregroundStyle(.primary)
@@ -238,25 +236,40 @@ struct GamePeekPreview: View {
     var image: UIImage?
 
     /// Context-menu previews are snapshotted in an isolated host with no
-    /// proposed size. A flexible VStack collapsed to empty; pin 3:4 box art.
+    /// proposed size. Pin a frame that matches the scan so boxes are not cropped.
     var body: some View {
-        ZStack {
-            Color(white: 0.12)
+        let size = peekSize
+        Group {
             if let resolvedImage {
                 Image(uiImage: resolvedImage)
                     .renderingMode(.original)
                     .resizable()
-                    .aspectRatio(contentMode: resolvedImage.size.width > resolvedImage.size.height ? .fit : .fill)
+                    .frame(width: size.width, height: size.height)
             } else {
-                Text(item.title)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(16)
+                ZStack {
+                    Color(white: 0.12)
+                    Text(item.title)
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(16)
+                }
+                .frame(width: size.width, height: size.height)
             }
         }
-        .frame(width: 240, height: 320)
-        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var peekSize: CGSize {
+        let maxSide: CGFloat = 280
+        guard let img = resolvedImage, img.size.width > 1, img.size.height > 1 else {
+            return CGSize(width: 210, height: 280)
+        }
+        let ratio = img.size.width / img.size.height
+        if ratio >= 1 {
+            return CGSize(width: maxSide, height: (maxSide / ratio).rounded())
+        }
+        return CGSize(width: (maxSide * ratio).rounded(), height: maxSide)
     }
 
     private var resolvedImage: UIImage? {

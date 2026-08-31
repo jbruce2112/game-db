@@ -21,8 +21,7 @@ struct GameDetailView: View {
             if let item {
                 Section {
                     CoverView(item: item)
-                        .aspectRatio(3/4, contentMode: .fit)
-                        .frame(maxWidth: 180)
+                        .frame(maxWidth: 220, maxHeight: 360)
                         .frame(maxWidth: .infinity)
                         .listRowBackground(Color.clear)
                 }
