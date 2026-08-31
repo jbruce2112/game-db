@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS library_items (
     notes            TEXT NOT NULL DEFAULT '',
     igdb_game_id     INTEGER,
     cover_id         TEXT,
+    box_cover_id     TEXT,
     barcode          TEXT,
     created_at       TEXT NOT NULL,
     updated_at       TEXT NOT NULL,
@@ -77,4 +78,17 @@ CREATE TABLE IF NOT EXISTS igdb_games (
     first_release_date INTEGER,
     platforms_json     TEXT NOT NULL DEFAULT '[]',
     updated_at         TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tgdb_platforms (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    alias      TEXT,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS box_cover_misses (
+    item_id    TEXT PRIMARY KEY NOT NULL,
+    query_key  TEXT NOT NULL,
+    fetched_at TEXT NOT NULL
 );

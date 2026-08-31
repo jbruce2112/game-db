@@ -21,6 +21,8 @@ type Item struct {
 	IGDBGameID     *int64     `json:"igdb_game_id"`
 	CoverID        *string    `json:"cover_id"`
 	CoverURL       *string    `json:"cover_url,omitempty"`
+	BoxCoverID     *string    `json:"box_cover_id"`
+	BoxCoverURL    *string    `json:"box_cover_url,omitempty"`
 	Barcode        *string    `json:"barcode"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`

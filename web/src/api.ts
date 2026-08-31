@@ -29,6 +29,7 @@ export const api = {
       pricecharting_configured?: boolean;
       ebay_configured?: boolean;
       prices_configured?: boolean;
+      tgdb_configured?: boolean;
     }>("/v1/auth/me"),
   login: (password: string) =>
     req<{ token: string }>("/v1/auth/login", {
@@ -100,7 +101,18 @@ export const api = {
     }),
 };
 
-export function coverSrc(item: { id: string; cover_url?: string | null; igdb_game_id?: number | null }) {
+export type CoverArt = "poster" | "box";
+
+export function coverSrc(
+  item: {
+    id: string;
+    cover_url?: string | null;
+    box_cover_url?: string | null;
+    igdb_game_id?: number | null;
+  },
+  art: CoverArt = "poster",
+) {
+  if (art === "box" && item.box_cover_url) return item.box_cover_url;
   if (item.cover_url) return item.cover_url;
   if (item.igdb_game_id) return `/v1/library/${item.id}/cover`;
   return null;

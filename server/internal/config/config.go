@@ -17,6 +17,7 @@ type Config struct {
 	EbayClientID       string
 	EbayClientSecret   string
 	EbayMarketplace    string
+	TheGamesDBAPIKey   string
 }
 
 func FromEnv() (Config, error) {
@@ -31,6 +32,7 @@ func FromEnv() (Config, error) {
 		EbayClientID:       strings.TrimSpace(os.Getenv("EBAY_CLIENT_ID")),
 		EbayClientSecret:   strings.TrimSpace(os.Getenv("EBAY_CLIENT_SECRET")),
 		EbayMarketplace:    getenv("EBAY_MARKETPLACE", "EBAY_US"),
+		TheGamesDBAPIKey:   strings.TrimSpace(os.Getenv("THEGAMESDB_API_KEY")),
 	}
 	if strings.TrimSpace(cfg.AppPassword) == "" {
 		return Config{}, fmt.Errorf("APP_PASSWORD is required")
@@ -52,6 +54,10 @@ func (c Config) EbayConfigured() bool {
 
 func (c Config) PricesConfigured() bool {
 	return c.EbayConfigured() || c.PriceChartingConfigured()
+}
+
+func (c Config) TGDBConfigured() bool {
+	return c.TheGamesDBAPIKey != ""
 }
 
 func getenv(key, fallback string) string {

@@ -36,6 +36,24 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Section("Cover art") {
+                    Picker("Artwork", selection: Binding(
+                        get: { store.coverArt },
+                        set: { store.coverArt = $0 }
+                    )) {
+                        Text("IGDB posters").tag(CoverArtStyle.poster)
+                        Text("Platform boxes").tag(CoverArtStyle.box)
+                    }
+                    if store.coverArt == .box && !store.tgdbConfigured {
+                        Text("Set THEGAMESDB_API_KEY on the server to fetch physical box fronts.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Posters are IGDB storefront art. Boxes are platform-branded fronts from TheGamesDB.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section("Status") {
                     LabeledContent("Paired", value: store.isPaired ? "Yes" : "No")
                     LabeledContent("Reachable", value: store.online ? "Yes" : "No")

@@ -1,14 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api, coverSrc, formatAdded, formatUSD, valueCents } from "../api";
+import { useCoverArt } from "../coverArt";
 import type { LibraryItem } from "../types";
 
-export default function Library({ igdb, prices = false }: { igdb: boolean; prices?: boolean }) {
+export default function Library({
+  igdb,
+  prices = false,
+  tgdb = false,
+}: {
+  igdb: boolean;
+  prices?: boolean;
+  tgdb?: boolean;
+}) {
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("title");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [coverArt, setCoverArt] = useCoverArt();
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const nav = useNavigate();
@@ -21,6 +31,9 @@ export default function Library({ igdb, prices = false }: { igdb: boolean; price
       const items = query.state.data?.items ?? [];
       const pendingCovers = items.filter((item) => !item.cover_url && !item.igdb_game_id).length;
       if (pendingCovers > 0) return 4000;
+      if (tgdb && coverArt === "box" && items.some((item) => !item.box_cover_id && item.box_cover_url)) {
+        return 4000;
+      }
       if (prices && items.length > 0 && items.some((item) => !item.value)) return 10_000;
       return false;
     },
@@ -73,6 +86,7 @@ export default function Library({ igdb, prices = false }: { igdb: boolean; price
             {platform ? ` · ${platform}` : ""}
             {shelfValue != null ? ` · ${formatUSD(shelfValue)}` : ""}
             {!igdb && " · IGDB not configured"}
+            {coverArt === "box" && !tgdb && " · TheGamesDB key not set"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -177,6 +191,26 @@ export default function Library({ igdb, prices = false }: { igdb: boolean; price
                 List
               </button>
             </div>
+            <div className="flex overflow-hidden rounded-lg border border-[#2a2e38] text-sm">
+              <button
+                type="button"
+                className={`px-3 py-2 ${coverArt === "poster" ? "bg-[#16181f] text-[#e2b14a]" : "text-[#9aa3b2]"}`}
+                onClick={() => setCoverArt("poster")}
+              >
+                Posters
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-2 ${coverArt === "box" ? "bg-[#16181f] text-[#e2b14a]" : "text-[#9aa3b2]"}`}
+                onClick={() => {
+                  setCoverArt("box");
+                  void qc.invalidateQueries({ queryKey: ["library"] });
+                }}
+                title={tgdb ? "Platform box fronts from TheGamesDB" : "Set THEGAMESDB_API_KEY on the server"}
+              >
+                Boxes
+              </button>
+            </div>
           </div>
 
           {lib.isLoading && <p className="mt-10 text-[#9aa3b2]">Loading…</p>}
@@ -231,7 +265,8 @@ export default function Library({ igdb, prices = false }: { igdb: boolean; price
       </div>
 
       <p className="mt-12 text-center text-xs text-[#9aa3b2]">
-        Game data from IGDB.com. Asking prices from eBay when configured.
+        Game data from IGDB.com. Box fronts from TheGamesDB when configured.
+        Asking prices from eBay when configured.
       </p>
     </div>
   );
@@ -325,8 +360,15 @@ function CoverThumb({ item }: { item: LibraryItem }) {
 }
 
 function CoverImg({ item }: { item: LibraryItem }) {
-  const src = coverSrc(item);
+  const [coverArt] = useCoverArt();
+  const preferred = coverSrc(item, coverArt);
+  const fallback = coverArt === "box" ? coverSrc(item, "poster") : null;
+  const [src, setSrc] = useState<string | null>(preferred);
   const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setSrc(preferred);
+    setFailed(false);
+  }, [preferred]);
   if (!src || failed) {
     return (
       <div className="grid h-full w-full place-items-center px-2 text-center text-xs text-[#9aa3b2]">
@@ -339,7 +381,13 @@ function CoverImg({ item }: { item: LibraryItem }) {
       src={src}
       alt=""
       className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (fallback && src !== fallback) {
+          setSrc(fallback);
+          return;
+        }
+        setFailed(true);
+      }}
     />
   );
 }

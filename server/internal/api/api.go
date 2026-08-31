@@ -26,6 +26,7 @@ import (
 	"game-db/internal/igdb"
 	"game-db/internal/pricecharting"
 	"game-db/internal/store"
+	"game-db/internal/tgdb"
 )
 
 const cookieName = "game_db_session"
@@ -42,6 +43,9 @@ type Handler struct {
 	pc                priceSource
 	ebay              *ebay.Client
 	priceBackfillBusy atomic.Bool
+	tgdb              boxArtSource
+	boxBackfillBusy   atomic.Bool
+	boxInflight       sync.Map
 }
 
 func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, frontend fs.FS) *Handler {
@@ -51,6 +55,9 @@ func New(cfg config.Config, st *store.Store, ig *igdb.Client, log *slog.Logger, 
 	}
 	if cfg.EbayConfigured() {
 		h.ebay = ebay.New(cfg.EbayClientID, cfg.EbayClientSecret, cfg.EbayMarketplace)
+	}
+	if cfg.TGDBConfigured() {
+		h.tgdb = tgdb.New(cfg.TheGamesDBAPIKey)
 	}
 	return h
 }
@@ -77,6 +84,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("GET /v1/search/barcode", h.auth(h.searchBarcode))
 	mux.HandleFunc("GET /v1/covers/{id}", h.auth(h.cover))
 	mux.HandleFunc("GET /v1/library/{id}/cover", h.auth(h.libraryCover))
+	mux.HandleFunc("GET /v1/library/{id}/box-cover", h.auth(h.libraryBoxCover))
 	mux.HandleFunc("POST /v1/cache/clear", h.auth(h.clearCache))
 
 	mux.HandleFunc("GET /{path...}", h.spa)
@@ -134,6 +142,7 @@ func (h *Handler) me(w http.ResponseWriter, _ *http.Request) {
 		"pricecharting_configured": h.cfg.PriceChartingConfigured(),
 		"ebay_configured":          h.cfg.EbayConfigured(),
 		"prices_configured":        h.cfg.PricesConfigured(),
+		"tgdb_configured":          h.cfg.TGDBConfigured(),
 	})
 }
 

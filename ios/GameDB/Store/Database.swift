@@ -87,6 +87,9 @@ enum AppDatabase {
             try db.execute(sql: "ALTER TABLE price_quotes ADD COLUMN source TEXT")
             try db.execute(sql: "ALTER TABLE price_quotes ADD COLUMN listings INTEGER")
         }
+        migrator.registerMigration("v5-box-cover") { db in
+            try db.execute(sql: "ALTER TABLE library_items ADD COLUMN box_cover_id TEXT")
+        }
         return migrator
     }
 }

@@ -43,7 +43,9 @@ func (h *Handler) listLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.attachValues(r.Context(), items)
+	h.attachBoxCoverOnDemand(r.Context(), items)
 	h.KickCoverBackfill()
+	h.KickBoxCoverBackfill()
 	h.KickPriceBackfill()
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
@@ -131,6 +133,7 @@ func (h *Handler) clearCache(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.KickCoverBackfill()
+	h.KickBoxCoverBackfill()
 	h.KickPriceBackfill()
 	writeJSON(w, http.StatusOK, out)
 }
@@ -152,6 +155,7 @@ func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.KickCoverBackfill()
+	h.KickBoxCoverBackfill()
 	writeJSON(w, http.StatusOK, map[string]any{"imported": len(items)})
 }
 
@@ -225,6 +229,7 @@ func (h *Handler) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.ensurePrice(r.Context(), &item)
+	h.decorateBoxCover(r.Context(), &item)
 	writeJSON(w, http.StatusOK, item)
 }
 
@@ -309,6 +314,8 @@ func (h *Handler) createLibrary(w http.ResponseWriter, r *http.Request) {
 		_ = h.store.RememberBarcodeGame(r.Context(), *out.Barcode, *out.IGDBGameID)
 	}
 	h.ensurePrice(r.Context(), &out)
+	h.decorateBoxCover(r.Context(), &out)
+	h.KickBoxCoverBackfill()
 	writeJSON(w, http.StatusCreated, out)
 }
 
@@ -388,6 +395,7 @@ func (h *Handler) patchLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	prevTitle, prevPlatform := item.Title, item.Platform
 	if body.Title != nil {
 		item.Title = strings.TrimSpace(*body.Title)
 	}
@@ -422,6 +430,11 @@ func (h *Handler) patchLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "title and platform are required")
 		return
 	}
+	if item.Title != prevTitle || item.Platform != prevPlatform {
+		item.BoxCoverID = nil
+		item.BoxCoverURL = nil
+		_ = h.store.ClearBoxCoverMiss(r.Context(), item.ID)
+	}
 	item.UpdatedAt = model.TimeUTC(time.Now())
 	out, err := h.store.Replace(r.Context(), item)
 	if err != nil {
@@ -429,6 +442,8 @@ func (h *Handler) patchLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.KickPriceBackfill()
+	h.KickBoxCoverBackfill()
+	h.decorateBoxCover(r.Context(), &out)
 	writeJSON(w, http.StatusOK, out)
 }
 

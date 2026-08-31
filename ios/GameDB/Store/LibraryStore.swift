@@ -16,6 +16,10 @@ final class LibraryStore {
     var syncMessage: String = ""
     var igdbConfigured: Bool = false
     var pricechartingConfigured: Bool = false
+    var tgdbConfigured: Bool = false
+    var coverArt: CoverArtStyle = CoverArtStyle(rawValue: UserDefaults.standard.string(forKey: "coverArt") ?? "") ?? .poster {
+        didSet { UserDefaults.standard.set(coverArt.rawValue, forKey: "coverArt") }
+    }
     var quotes: [String: PriceQuote] = [:]
     var errorMessage: String?
 
@@ -226,6 +230,7 @@ final class LibraryStore {
         online = false
         igdbConfigured = false
         pricechartingConfigured = false
+        tgdbConfigured = false
         syncMessage = "Local only"
     }
 
@@ -235,6 +240,7 @@ final class LibraryStore {
             let result = try await sync.sync(db: db, api: api)
             igdbConfigured = result.igdbConfigured
             pricechartingConfigured = result.pricechartingConfigured
+            tgdbConfigured = result.tgdbConfigured
             online = true
             lastSync = Date()
             UserDefaults.standard.set(lastSync, forKey: "lastSync")
@@ -266,6 +272,14 @@ final class LibraryStore {
         return nil
     }
 
+    func cachedDisplayCover(for item: LibraryItem) -> UIImage? {
+        if coverArt == .box {
+            if let img = cachedCoverImage(for: item.boxCoverId) { return img }
+            if let img = coverCache["box:\(item.id)"] { return img }
+        }
+        return cachedCoverImage(for: item.coverId)
+    }
+
     func coverImage(for coverId: String?) async -> UIImage? {
         guard let coverId, !coverId.isEmpty else { return nil }
         if let cached = coverCache[coverId] {
@@ -281,6 +295,27 @@ final class LibraryStore {
         try? data.write(to: AppDatabase.coverURL(id: coverId), options: .atomic)
         coverCache[coverId] = img
         return img
+    }
+
+    func displayCover(for item: LibraryItem) async -> UIImage? {
+        if coverArt == .box {
+            if let img = await coverImage(for: item.boxCoverId) {
+                return img
+            }
+            if let cached = coverCache["box:\(item.id)"] {
+                return cached
+            }
+            if isPaired, let data = try? await api.libraryBoxCover(id: item.id), let img = UIImage(data: data) {
+                if let id = item.boxCoverId, !id.isEmpty {
+                    try? data.write(to: AppDatabase.coverURL(id: id), options: .atomic)
+                    coverCache[id] = img
+                } else {
+                    coverCache["box:\(item.id)"] = img
+                }
+                return img
+            }
+        }
+        return await coverImage(for: item.coverId)
     }
 
     private func downloadPrices() async {
@@ -318,6 +353,7 @@ final class LibraryStore {
     private func downloadCovers() async {
         for item in items where item.deletedAt == nil {
             _ = await coverImage(for: item.coverId)
+            _ = await coverImage(for: item.boxCoverId)
         }
     }
 
@@ -329,4 +365,9 @@ final class LibraryStore {
         }
         return "http://\(s)"
     }
+}
+
+enum CoverArtStyle: String {
+    case poster
+    case box
 }

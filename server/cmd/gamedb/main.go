@@ -51,6 +51,7 @@ func main() {
 
 	h := api.New(cfg, st, ig, log, loadFrontend(log))
 	h.KickCoverBackfill()
+	h.KickBoxCoverBackfill()
 	h.KickPriceBackfill()
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -59,7 +60,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info("listen", "addr", cfg.HTTPAddr, "data", cfg.DataDir, "igdb", cfg.IGDBConfigured(), "ebay", cfg.EbayConfigured(), "pricecharting", cfg.PriceChartingConfigured())
+		log.Info("listen", "addr", cfg.HTTPAddr, "data", cfg.DataDir, "igdb", cfg.IGDBConfigured(), "ebay", cfg.EbayConfigured(), "pricecharting", cfg.PriceChartingConfigured(), "tgdb", cfg.TGDBConfigured())
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("http", "err", err)
 			os.Exit(1)

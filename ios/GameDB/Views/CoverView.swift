@@ -22,8 +22,8 @@ struct CoverView: View {
             }
         }
         .clipped()
-        .task(id: item.coverId) {
-            image = await store.coverImage(for: item.coverId)
+        .task(id: "\(item.id)-\(store.coverArt.rawValue)-\(item.coverId ?? "")-\(item.boxCoverId ?? "")") {
+            image = await store.displayCover(for: item)
         }
     }
 }

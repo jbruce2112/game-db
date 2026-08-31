@@ -89,7 +89,7 @@ struct LibraryView: View {
                                 } preview: {
                                     GamePeekPreview(
                                         item: item,
-                                        image: store.cachedCoverImage(for: item.coverId)
+                                        image: store.cachedDisplayCover(for: item)
                                     )
                                 }
                             }
@@ -122,6 +122,14 @@ struct LibraryView: View {
                         Image(systemName: "chart.bar")
                     }
                     .accessibilityLabel("Statistics")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        store.coverArt = store.coverArt == .box ? .poster : .box
+                    } label: {
+                        Image(systemName: store.coverArt == .box ? "shippingbox.fill" : "photo")
+                    }
+                    .accessibilityLabel(store.coverArt == .box ? "Showing platform box art" : "Showing poster art")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -252,7 +260,7 @@ struct GamePeekPreview: View {
     }
 
     private var resolvedImage: UIImage? {
-        image ?? CoverFile.image(for: item.coverId)
+        image ?? CoverFile.image(for: item.boxCoverId) ?? CoverFile.image(for: item.coverId)
     }
 }
 

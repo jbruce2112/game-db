@@ -11,6 +11,7 @@ struct LibraryItem: Identifiable, Equatable, Hashable {
     var notes: String
     var igdbGameId: Int64?
     var coverId: String?
+    var boxCoverId: String?
     var barcode: String?
     var createdAt: String
     var updatedAt: String
@@ -31,6 +32,7 @@ struct LibraryItem: Identifiable, Equatable, Hashable {
             notes: notes,
             igdbGameId: nil,
             coverId: nil,
+            boxCoverId: nil,
             barcode: barcode,
             createdAt: now,
             updatedAt: now,
@@ -59,6 +61,7 @@ extension LibraryItem: Codable {
         case igdbPlatformId = "igdb_platform_id"
         case igdbGameId = "igdb_game_id"
         case coverId = "cover_id"
+        case boxCoverId = "box_cover_id"
         case barcode
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -78,6 +81,7 @@ extension LibraryItem: Codable {
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         igdbGameId = try c.decodeIfPresent(Int64.self, forKey: .igdbGameId)
         coverId = try c.decodeIfPresent(String.self, forKey: .coverId)
+        boxCoverId = try c.decodeIfPresent(String.self, forKey: .boxCoverId)
         if let raw = try c.decodeIfPresent(String.self, forKey: .barcode), !raw.isEmpty {
             barcode = raw
         } else {
@@ -106,6 +110,7 @@ extension LibraryItem: Codable {
         try c.encode(notes, forKey: .notes)
         try c.encodeIfPresent(igdbGameId, forKey: .igdbGameId)
         try c.encodeIfPresent(coverId, forKey: .coverId)
+        try c.encodeIfPresent(boxCoverId, forKey: .boxCoverId)
         if let barcode {
             try c.encode(barcode, forKey: .barcode)
         } else {
@@ -131,6 +136,7 @@ extension LibraryItem: FetchableRecord, PersistableRecord {
         notes = row["notes"]
         igdbGameId = row["igdb_game_id"]
         coverId = row["cover_id"]
+        boxCoverId = row["box_cover_id"]
         barcode = row["barcode"]
         createdAt = row["created_at"]
         updatedAt = row["updated_at"]
@@ -151,6 +157,7 @@ extension LibraryItem: FetchableRecord, PersistableRecord {
         container["notes"] = notes
         container["igdb_game_id"] = igdbGameId
         container["cover_id"] = coverId
+        container["box_cover_id"] = boxCoverId
         container["barcode"] = barcode
         container["created_at"] = createdAt
         container["updated_at"] = updatedAt

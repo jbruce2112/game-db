@@ -4,6 +4,7 @@ import GRDB
 struct SyncResult {
     var igdbConfigured: Bool
     var pricechartingConfigured: Bool
+    var tgdbConfigured: Bool
 }
 
 final class SyncService {
@@ -11,6 +12,7 @@ final class SyncService {
         let me = try? await api.me()
         let igdb = me?.igdbConfigured ?? false
         let pc = me?.pricechartingConfigured ?? false
+        let tgdb = me?.tgdbConfigured ?? false
         var cursor: Int64 = try await db.read { db in
             let row = try Row.fetchOne(db, sql: "SELECT value FROM meta WHERE key = ?", arguments: ["sync_cursor"])
             guard let row else { return 0 }
@@ -60,6 +62,9 @@ final class SyncService {
                 if item.coverId == nil, let existing = try LibraryItem.fetchOne(db, key: item.id), existing.coverId != nil {
                     item.coverId = existing.coverId
                 }
+                if item.boxCoverId == nil, let existing = try LibraryItem.fetchOne(db, key: item.id), existing.boxCoverId != nil {
+                    item.boxCoverId = existing.boxCoverId
+                }
                 item.dirty = false
                 try item.save(db)
             }
@@ -88,6 +93,6 @@ final class SyncService {
                 arguments: ["sync_cursor", String(applied.cursor)]
             )
         }
-        return SyncResult(igdbConfigured: igdb, pricechartingConfigured: pc)
+        return SyncResult(igdbConfigured: igdb, pricechartingConfigured: pc, tgdbConfigured: tgdb)
     }
 }

@@ -142,6 +142,13 @@ final class APIClient {
         return data
     }
 
+    func libraryBoxCover(id: String) async throws -> Data {
+        let req = try request(path: "/v1/library/\(id)/box-cover", method: "GET")
+        let (data, resp) = try await session.data(for: req)
+        try throwIfNeeded(resp, data: data)
+        return data
+    }
+
     private func request(path: String, method: String) throws -> URLRequest {
         try request(url: try url(path), method: method)
     }
@@ -176,11 +183,13 @@ private struct TokenResponse: Codable { var token: String }
 struct MeResponse: Decodable {
     var igdbConfigured: Bool
     var pricechartingConfigured: Bool
+    var tgdbConfigured: Bool
     enum CodingKeys: String, CodingKey {
         case igdbConfigured = "igdb_configured"
         case pricechartingConfigured = "pricecharting_configured"
         case pricesConfigured = "prices_configured"
         case ebayConfigured = "ebay_configured"
+        case tgdbConfigured = "tgdb_configured"
     }
 
     init(from decoder: Decoder) throws {
@@ -190,6 +199,7 @@ struct MeResponse: Decodable {
         let ebay = try c.decodeIfPresent(Bool.self, forKey: .ebayConfigured) ?? false
         let pc = try c.decodeIfPresent(Bool.self, forKey: .pricechartingConfigured) ?? false
         pricechartingConfigured = prices || ebay || pc
+        tgdbConfigured = try c.decodeIfPresent(Bool.self, forKey: .tgdbConfigured) ?? false
     }
 }
 private struct SearchEnvelope: Codable { var games: [SearchGame] }

@@ -249,6 +249,12 @@ func (s *Store) Sync(ctx context.Context, cursor int64, incoming []model.Item, n
 			}
 			item.CreatedAt = existing.CreatedAt
 			item.SyncSeq = seq
+			if item.CoverID == nil && existing.CoverID != nil {
+				item.CoverID = existing.CoverID
+			}
+			if item.BoxCoverID == nil && existing.BoxCoverID != nil {
+				item.BoxCoverID = existing.BoxCoverID
+			}
 			if err := updateItem(ctx, tx, item); err != nil {
 				return SyncResult{}, err
 			}
@@ -351,7 +357,15 @@ func (s *Store) LinkIGDB(ctx context.Context, itemID string, gameID int64, platf
 }
 
 func (s *Store) SetCoverID(ctx context.Context, itemID, coverID string) error {
-	if itemID == "" || coverID == "" {
+	return s.setCoverColumn(ctx, itemID, "cover_id", coverID)
+}
+
+func (s *Store) SetBoxCoverID(ctx context.Context, itemID, coverID string) error {
+	return s.setCoverColumn(ctx, itemID, "box_cover_id", coverID)
+}
+
+func (s *Store) ClearBoxCoverID(ctx context.Context, itemID string) error {
+	if itemID == "" {
 		return nil
 	}
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -359,8 +373,31 @@ func (s *Store) SetCoverID(ctx context.Context, itemID, coverID string) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	seq, err := nextSeq(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE library_items SET box_cover_id = NULL, sync_seq = ? WHERE id = ?`, seq, itemID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) setCoverColumn(ctx context.Context, itemID, column, coverID string) error {
+	if itemID == "" || coverID == "" {
+		return nil
+	}
+	if column != "cover_id" && column != "box_cover_id" {
+		return fmt.Errorf("unknown cover column")
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 	var current sql.NullString
-	if err := tx.QueryRowContext(ctx, `SELECT cover_id FROM library_items WHERE id = ?`, itemID).Scan(&current); err != nil {
+	q := `SELECT ` + column + ` FROM library_items WHERE id = ?`
+	if err := tx.QueryRowContext(ctx, q, itemID).Scan(&current); err != nil {
 		return err
 	}
 	if current.Valid && current.String == coverID {
@@ -370,7 +407,7 @@ func (s *Store) SetCoverID(ctx context.Context, itemID, coverID string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE library_items SET cover_id = ?, sync_seq = ? WHERE id = ?`, coverID, seq, itemID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE library_items SET `+column+` = ?, sync_seq = ? WHERE id = ?`, coverID, seq, itemID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -385,14 +422,17 @@ func (s *Store) attachCoverURLs(ctx context.Context, items []model.Item) {
 func (s *Store) attachCoverURL(ctx context.Context, item *model.Item) {
 	if s.CoverExists(ctx, item.CoverID) {
 		item.CoverURL = model.CoverURL(item.CoverID)
-		return
-	}
-	if item.IGDBGameID != nil {
+	} else if item.IGDBGameID != nil {
 		u := "/v1/library/" + item.ID + "/cover"
 		item.CoverURL = &u
-		return
+	} else {
+		item.CoverURL = nil
 	}
-	item.CoverURL = nil
+	if s.CoverExists(ctx, item.BoxCoverID) {
+		item.BoxCoverURL = model.CoverURL(item.BoxCoverID)
+	} else {
+		item.BoxCoverURL = nil
+	}
 }
 
 type Platform struct {
@@ -483,7 +523,120 @@ func (s *Store) PlatformName(ctx context.Context, id int64) (string, error) {
 	return name, err
 }
 
-const itemCols = `id, title, platform, igdb_platform_id, region, completeness, notes, igdb_game_id, cover_id, barcode, created_at, updated_at, deleted_at, sync_seq`
+type TGDBPlatform struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Alias string `json:"alias"`
+}
+
+func (s *Store) ListTGDBPlatforms(ctx context.Context) ([]TGDBPlatform, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT id, name, alias FROM tgdb_platforms ORDER BY name COLLATE NOCASE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []TGDBPlatform
+	for rows.Next() {
+		var p TGDBPlatform
+		var alias sql.NullString
+		if err := rows.Scan(&p.ID, &p.Name, &alias); err != nil {
+			return nil, err
+		}
+		if alias.Valid {
+			p.Alias = alias.String
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) TGDBPlatformsStale(ctx context.Context, maxAge time.Duration) (bool, error) {
+	var n int
+	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM tgdb_platforms`).Scan(&n); err != nil {
+		return true, err
+	}
+	if n < 20 {
+		return true, nil
+	}
+	var raw sql.NullString
+	if err := s.DB.QueryRowContext(ctx, `SELECT MAX(updated_at) FROM tgdb_platforms`).Scan(&raw); err != nil {
+		return true, err
+	}
+	if !raw.Valid {
+		return true, nil
+	}
+	t, err := model.ParseTime(raw.String)
+	if err != nil {
+		return true, nil
+	}
+	return time.Since(t) > maxAge, nil
+}
+
+func (s *Store) UpsertTGDBPlatforms(ctx context.Context, platforms []TGDBPlatform) error {
+	now := model.FormatTime(time.Now())
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO tgdb_platforms (id, name, alias, updated_at)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			name=excluded.name,
+			alias=excluded.alias,
+			updated_at=excluded.updated_at`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, p := range platforms {
+		if _, err := stmt.ExecContext(ctx, p.ID, p.Name, nullStr(p.Alias), now); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func BoxCoverQueryKey(item model.Item) string {
+	return strings.ToLower(strings.TrimSpace(item.Title)) + "|" + strings.ToLower(strings.TrimSpace(item.Platform))
+}
+
+func (s *Store) RememberBoxCoverMiss(ctx context.Context, item model.Item) error {
+	if item.ID == "" {
+		return nil
+	}
+	_, err := s.DB.ExecContext(ctx, `
+		INSERT INTO box_cover_misses (item_id, query_key, fetched_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT(item_id) DO UPDATE SET
+			query_key=excluded.query_key,
+			fetched_at=excluded.fetched_at`,
+		item.ID, BoxCoverQueryKey(item), model.FormatTime(time.Now()))
+	return err
+}
+
+func (s *Store) BoxCoverMissed(ctx context.Context, item model.Item) bool {
+	if item.ID == "" {
+		return false
+	}
+	var key string
+	err := s.DB.QueryRowContext(ctx, `SELECT query_key FROM box_cover_misses WHERE item_id = ?`, item.ID).Scan(&key)
+	if err != nil {
+		return false
+	}
+	return key == BoxCoverQueryKey(item)
+}
+
+func (s *Store) ClearBoxCoverMiss(ctx context.Context, itemID string) error {
+	if itemID == "" {
+		return nil
+	}
+	_, err := s.DB.ExecContext(ctx, `DELETE FROM box_cover_misses WHERE item_id = ?`, itemID)
+	return err
+}
+
+const itemCols = `id, title, platform, igdb_platform_id, region, completeness, notes, igdb_game_id, cover_id, box_cover_id, barcode, created_at, updated_at, deleted_at, sync_seq`
 
 type scanner interface {
 	Scan(dest ...any) error
@@ -491,14 +644,14 @@ type scanner interface {
 
 func scanItem(row scanner) (model.Item, error) {
 	var (
-		it                                  model.Item
-		igdbPlat, igdbGame                  sql.NullInt64
-		created, upd                        string
-		regionN, coverN, barcodeN, deletedN sql.NullString
+		it                                             model.Item
+		igdbPlat, igdbGame                             sql.NullInt64
+		created, upd                                   string
+		regionN, coverN, boxCoverN, barcodeN, deletedN sql.NullString
 	)
 	err := row.Scan(
 		&it.ID, &it.Title, &it.Platform, &igdbPlat, &regionN, &it.Completeness, &it.Notes,
-		&igdbGame, &coverN, &barcodeN, &created, &upd, &deletedN, &it.SyncSeq,
+		&igdbGame, &coverN, &boxCoverN, &barcodeN, &created, &upd, &deletedN, &it.SyncSeq,
 	)
 	if err != nil {
 		return model.Item{}, err
@@ -518,6 +671,10 @@ func scanItem(row scanner) (model.Item, error) {
 	if coverN.Valid {
 		coverID := coverN.String
 		it.CoverID = &coverID
+	}
+	if boxCoverN.Valid && boxCoverN.String != "" {
+		boxID := boxCoverN.String
+		it.BoxCoverID = &boxID
 	}
 	if barcodeN.Valid && barcodeN.String != "" {
 		b := barcodeN.String
@@ -571,11 +728,11 @@ func insertItem(ctx context.Context, tx *sql.Tx, item model.Item) error {
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO library_items (
 			id, title, platform, igdb_platform_id, region, completeness, notes,
-			igdb_game_id, cover_id, barcode, created_at, updated_at, deleted_at, sync_seq
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			igdb_game_id, cover_id, box_cover_id, barcode, created_at, updated_at, deleted_at, sync_seq
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		item.ID, item.Title, item.Platform, nullInt(item.IGDBPlatformID), nullStrPtr(item.Region),
 		item.Completeness, item.Notes, nullInt(item.IGDBGameID), nullStrPtr(item.CoverID),
-		nullStrPtr(item.Barcode),
+		nullStrPtr(item.BoxCoverID), nullStrPtr(item.Barcode),
 		model.FormatTime(item.CreatedAt), model.FormatTime(item.UpdatedAt),
 		nullTime(item.DeletedAt), item.SyncSeq,
 	)
@@ -586,11 +743,11 @@ func updateItem(ctx context.Context, tx *sql.Tx, item model.Item) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE library_items SET
 			title=?, platform=?, igdb_platform_id=?, region=?, completeness=?, notes=?,
-			igdb_game_id=?, cover_id=?, barcode=?, created_at=?, updated_at=?, deleted_at=?, sync_seq=?
+			igdb_game_id=?, cover_id=?, box_cover_id=?, barcode=?, created_at=?, updated_at=?, deleted_at=?, sync_seq=?
 		WHERE id=?`,
 		item.Title, item.Platform, nullInt(item.IGDBPlatformID), nullStrPtr(item.Region),
 		item.Completeness, item.Notes, nullInt(item.IGDBGameID), nullStrPtr(item.CoverID),
-		nullStrPtr(item.Barcode),
+		nullStrPtr(item.BoxCoverID), nullStrPtr(item.Barcode),
 		model.FormatTime(item.CreatedAt), model.FormatTime(item.UpdatedAt),
 		nullTime(item.DeletedAt), item.SyncSeq, item.ID,
 	)

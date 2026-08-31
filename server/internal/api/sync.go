@@ -28,7 +28,9 @@ func (h *Handler) sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.attachValues(r.Context(), res.Changes)
+	h.attachBoxCoverOnDemand(r.Context(), res.Changes)
 	h.KickCoverBackfill()
+	h.KickBoxCoverBackfill()
 	h.KickPriceBackfill()
 	writeJSON(w, http.StatusOK, res)
 }

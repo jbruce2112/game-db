@@ -17,6 +17,7 @@ import (
 	"game-db/internal/model"
 	"game-db/internal/pricecharting"
 	"game-db/internal/store"
+	"game-db/internal/tgdb"
 )
 
 func testHandler(t *testing.T) *Handler {
@@ -515,6 +516,119 @@ func TestClearCache(t *testing.T) {
 	}
 	if len(quotes) != 0 {
 		t.Fatalf("quotes %+v", quotes)
+	}
+}
+
+type fakeBoxArt struct {
+	plats   []tgdb.Platform
+	game    tgdb.Game
+	err     error
+	payload []byte
+	ct      string
+}
+
+func (f fakeBoxArt) Platforms(context.Context) ([]tgdb.Platform, error) {
+	return f.plats, nil
+}
+func (f fakeBoxArt) SearchFront(context.Context, string, int64) (tgdb.Game, error) {
+	if f.err != nil {
+		return tgdb.Game{}, f.err
+	}
+	return f.game, nil
+}
+func (f fakeBoxArt) Download(context.Context, string) (string, []byte, error) {
+	ct := f.ct
+	if ct == "" {
+		ct = "image/jpeg"
+	}
+	return ct, f.payload, nil
+}
+
+func TestLibraryBoxCover(t *testing.T) {
+	h := testHandler(t)
+	h.cfg.TheGamesDBAPIKey = "test-key"
+	h.tgdb = fakeBoxArt{
+		plats:   []tgdb.Platform{{ID: 2, Name: "Nintendo GameCube", Alias: "GC"}},
+		game:    tgdb.Game{ID: 42, Title: "Super Mario Sunshine", Platform: 2, FrontURL: "http://cdn.example/front.jpg", SourceID: "tgdb:front.jpg"},
+		payload: []byte("box-bytes"),
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	item, err := h.store.Insert(context.Background(), model.Item{
+		ID:           "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		Title:        "Super Mario Sunshine",
+		Platform:     "Nintendo GameCube",
+		Completeness: "cib",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/library/"+item.ID+"/box-cover", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != 200 {
+		t.Fatalf("status %d %s", res.StatusCode, got)
+	}
+	if string(got) != "box-bytes" {
+		t.Fatalf("body %q", got)
+	}
+
+	fresh, err := h.store.Get(context.Background(), item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.BoxCoverID == nil || !h.store.CoverExists(context.Background(), fresh.BoxCoverID) {
+		t.Fatalf("expected cached box cover, got %+v", fresh)
+	}
+	if fresh.BoxCoverURL == nil || *fresh.BoxCoverURL != "/v1/covers/"+*fresh.BoxCoverID {
+		t.Fatalf("box url %v", fresh.BoxCoverURL)
+	}
+}
+
+func TestLibraryBoxCoverMiss(t *testing.T) {
+	h := testHandler(t)
+	h.cfg.TheGamesDBAPIKey = "test-key"
+	h.tgdb = fakeBoxArt{err: tgdb.ErrNoFront, plats: []tgdb.Platform{{ID: 2, Name: "Nintendo GameCube"}}}
+	now := time.Now().UTC().Truncate(time.Second)
+	item, err := h.store.Insert(context.Background(), model.Item{
+		ID:           "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+		Title:        "Homebrew Cart",
+		Platform:     "Nintendo GameCube",
+		Completeness: "loose",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/library/"+item.ID+"/box-cover", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("want 404 got %d", res.StatusCode)
+	}
+	if !h.store.BoxCoverMissed(context.Background(), item) {
+		t.Fatal("expected miss cached")
 	}
 }
 

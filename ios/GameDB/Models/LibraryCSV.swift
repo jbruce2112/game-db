@@ -95,6 +95,7 @@ enum LibraryCSV {
                 notes: get(row, "notes"),
                 igdbGameId: Int64(get(row, "igdb_game_id")),
                 coverId: nil,
+                boxCoverId: nil,
                 barcode: {
                     let b = get(row, "barcode").filter(\.isNumber)
                     return b.isEmpty ? nil : b

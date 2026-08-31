@@ -33,7 +33,16 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <Routes>
-        <Route path="/" element={<Library igdb={!!me.data?.igdb_configured} prices={!!me.data?.prices_configured} />} />
+        <Route
+          path="/"
+          element={
+            <Library
+              igdb={!!me.data?.igdb_configured}
+              prices={!!me.data?.prices_configured}
+              tgdb={!!me.data?.tgdb_configured}
+            />
+          }
+        />
         <Route path="/add" element={<AddGame igdb={me.data.igdb_configured} />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/stats" element={<Stats />} />

@@ -2,7 +2,7 @@
 
 Self-hosted catalog for a **physical** video game collection. A Go server is the source of truth and hosts the web UI. The iOS app works fully offline and syncs when the server is reachable.
 
-Game metadata and cover art come from [IGDB](https://www.igdb.com/).
+Game metadata and poster art come from [IGDB](https://www.igdb.com/). Optional platform-specific physical box fronts come from [TheGamesDB](https://thegamesdb.net/).
 
 ## Quick start (Docker)
 
@@ -11,6 +11,7 @@ cp .env.example .env
 # set APP_PASSWORD
 # set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET (https://api-docs.igdb.com/#getting-started)
 # optional: EBAY_CLIENT_ID + EBAY_CLIENT_SECRET for asking prices (https://developer.ebay.com)
+# optional: THEGAMESDB_API_KEY for physical box fronts (https://thegamesdb.net/api.php)
 docker compose up --build
 ```
 
@@ -115,6 +116,7 @@ The process still prefers real environment variables over the file. Docker Compo
 | `EBAY_CLIENT_SECRET` | for values | | eBay Cert ID |
 | `EBAY_MARKETPLACE` | no | `EBAY_US` | eBay marketplace for asking prices |
 | `PRICECHARTING_TOKEN` | optional | | Paid PriceCharting token (used if eBay is unset) |
+| `THEGAMESDB_API_KEY` | for box art | | Free TheGamesDB key for platform box fronts |
 
 ## Layout
 

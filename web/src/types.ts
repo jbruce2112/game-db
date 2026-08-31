@@ -12,6 +12,8 @@ export type LibraryItem = {
   igdb_game_id: number | null;
   cover_id: string | null;
   cover_url: string | null;
+  box_cover_id: string | null;
+  box_cover_url: string | null;
   barcode: string | null;
   created_at: string;
   updated_at: string;

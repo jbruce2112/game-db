@@ -272,12 +272,12 @@ func TestExtremeStress(t *testing.T) {
 			for n := i; n < nBarcode; n += nWorkers {
 				code := stressBarcode(10_000 + n)
 				var got struct {
-					Barcode      string      `json:"barcode"`
-					ProductTitle string      `json:"product_title"`
-					Query        string      `json:"query"`
-					Platform     string      `json:"platform"`
-					Games        []any       `json:"games"`
-					Owned        []any       `json:"owned"`
+					Barcode      string `json:"barcode"`
+					ProductTitle string `json:"product_title"`
+					Query        string `json:"query"`
+					Platform     string `json:"platform"`
+					Games        []any  `json:"games"`
+					Owned        []any  `json:"owned"`
 				}
 				u := srv.URL + "/v1/search/barcode?q=" + code
 				if err := doJSON(client, token, http.MethodGet, u, nil, 200, &got); err != nil {

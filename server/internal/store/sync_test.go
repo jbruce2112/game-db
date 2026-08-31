@@ -82,6 +82,25 @@ func TestMigrateAddsBarcodeColumn(t *testing.T) {
 	}
 }
 
+func TestMigrateAddsBoxCoverID(t *testing.T) {
+	s := testStore(t)
+	it := item("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "Sunshine", time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC))
+	if _, err := s.Insert(context.Background(), it); err != nil {
+		t.Fatal(err)
+	}
+	coverID := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	if err := s.SetBoxCoverID(context.Background(), it.ID, coverID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Get(context.Background(), it.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.BoxCoverID == nil || *got.BoxCoverID != coverID {
+		t.Fatalf("%+v", got)
+	}
+}
+
 func TestSyncInsertAndPull(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
@@ -335,13 +354,13 @@ func TestPriceQuoteRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	cib := 5999
 	if err := s.UpsertPriceQuote(ctx, PriceQuote{
-		ItemID: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-		QueryKey: "k",
-		PCID: "3584",
+		ItemID:      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		QueryKey:    "k",
+		PCID:        "3584",
 		ProductName: "Super Mario Sunshine",
 		ConsoleName: "Gamecube",
-		Status: "ok",
-		CIBCents: &cib,
+		Status:      "ok",
+		CIBCents:    &cib,
 	}); err != nil {
 		t.Fatal(err)
 	}

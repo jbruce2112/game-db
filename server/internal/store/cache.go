@@ -27,6 +27,9 @@ func (s *Store) ClearDerivedCache(ctx context.Context) (CacheClearResult, error)
 	if out.Games, err = deleteCount(ctx, s, `DELETE FROM igdb_games`); err != nil {
 		return out, err
 	}
+	if _, err = s.DB.ExecContext(ctx, `DELETE FROM box_cover_misses`); err != nil {
+		return out, err
+	}
 	if _, err = s.DB.ExecContext(ctx, `DELETE FROM covers`); err != nil {
 		return out, err
 	}
