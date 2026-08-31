@@ -1,7 +1,9 @@
+import Charts
 import SwiftUI
 
 struct StatsView: View {
     @Environment(LibraryStore.self) private var store
+    @State private var yearPlatform = ""
 
     var body: some View {
         let stats = store.stats
@@ -20,6 +22,7 @@ struct StatsView: View {
                         hero("With cover", value: ShelfStats.percent(stats.withCover, of: stats.total))
                         hero("With barcode", value: ShelfStats.percent(stats.withBarcode, of: stats.total))
                     }
+                    yearChart(stats)
                     if let shelf = stats.shelfCents, stats.priced > 0 {
                         Section {
                             hero("Shelf", value: PriceQuote.usd(shelf))
@@ -46,6 +49,62 @@ struct StatsView: View {
         }
         .navigationTitle("Statistics")
         .preferredColorScheme(.dark)
+    }
+
+    private func yearChart(_ stats: ShelfStats) -> some View {
+        let rows = stats.countsByYear(platform: yearPlatform)
+        return Section {
+            Picker("Platform", selection: $yearPlatform) {
+                Text("All platforms").tag("")
+                ForEach(stats.platforms, id: \.name) { row in
+                    Text(row.name).tag(row.name)
+                }
+            }
+            if rows.isEmpty {
+                Text("No added dates to chart.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Chart(rows, id: \.year) { row in
+                    LineMark(
+                        x: .value("Year", row.year),
+                        y: .value("Games", row.count)
+                    )
+                    .foregroundStyle(Color(red: 0.89, green: 0.69, blue: 0.29))
+                    .interpolationMethod(.linear)
+                    PointMark(
+                        x: .value("Year", row.year),
+                        y: .value("Games", row.count)
+                    )
+                    .foregroundStyle(Color(red: 0.89, green: 0.69, blue: 0.29))
+                }
+                .chartXScale(domain: (rows.first?.year ?? 0)...(rows.last?.year ?? 0))
+                .chartXAxis {
+                    AxisMarks(values: rows.map(\.year)) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let year = value.as(Int.self) {
+                                Text(String(year)).font(.caption2)
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+                .frame(height: 180)
+                .padding(.vertical, 4)
+                .accessibilityLabel(yearChartLabel(rows))
+            }
+        } header: {
+            Text("Added by year")
+        } footer: {
+            Text("Uses each copy’s added date. Empty years are shown as zero.")
+        }
+    }
+
+    private func yearChartLabel(_ rows: [ShelfYearRow]) -> String {
+        rows.map { "\($0.year): \($0.count)" }.joined(separator: ", ")
     }
 
     private func hero(_ label: String, value: String) -> some View {

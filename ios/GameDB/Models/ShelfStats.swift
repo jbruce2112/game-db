@@ -17,6 +17,16 @@ struct ShelfPriceRow: Equatable {
     var cents: Int
 }
 
+struct ShelfYearRow: Equatable {
+    var year: Int
+    var count: Int
+}
+
+struct ShelfYearAdd: Equatable {
+    var year: Int
+    var platform: String
+}
+
 struct ShelfStats: Equatable {
     var total: Int
     var withCover: Int
@@ -29,6 +39,7 @@ struct ShelfStats: Equatable {
     var completeness: [ShelfRow]
     var valueByPlatform: [ShelfValueRow]
     var mostExpensive: [ShelfPriceRow]
+    var yearAdds: [ShelfYearAdd]
 
     static let empty = ShelfStats(items: [])
 
@@ -96,5 +107,28 @@ struct ShelfStats: Equatable {
             .sorted { (platValue[$0] ?? 0) > (platValue[$1] ?? 0) || ((platValue[$0] ?? 0) == (platValue[$1] ?? 0) && $0 < $1) }
             .map { ShelfValueRow(name: $0, cents: platValue[$0] ?? 0) }
         mostExpensive = Array(pricedRows.sorted { $0.cents > $1.cents || ($0.cents == $1.cents && $0.title < $1.title) }.prefix(10))
+        yearAdds = live.compactMap { item in
+            guard let year = Self.year(from: item.createdAt) else { return nil }
+            return ShelfYearAdd(year: year, platform: item.platform)
+        }
+    }
+
+    static func year(from iso: String) -> Int? {
+        guard iso.count >= 4, let y = Int(iso.prefix(4)), (1970...2100).contains(y) else { return nil }
+        return y
+    }
+
+    func countsByYear(platform: String = "") -> [ShelfYearRow] {
+        let rows = platform.isEmpty ? yearAdds : yearAdds.filter { $0.platform == platform }
+        guard !rows.isEmpty else { return [] }
+        var map: [Int: Int] = [:]
+        var minY = Int.max
+        var maxY = Int.min
+        for row in rows {
+            map[row.year, default: 0] += 1
+            minY = min(minY, row.year)
+            maxY = max(maxY, row.year)
+        }
+        return (minY...maxY).map { ShelfYearRow(year: $0, count: map[$0] ?? 0) }
     }
 }

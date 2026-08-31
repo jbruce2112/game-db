@@ -53,6 +53,29 @@ final class ShelfStatsTests: XCTestCase {
         XCTAssertEqual(ShelfStats.median([1, 2, 3, 4]), 3)
     }
 
+    func testCountsByYearFillsGapsAndFiltersPlatform() {
+        var botw = LibraryItem.newLocal(title: "BotW", platform: "Nintendo Switch", region: "us", completeness: "cib", notes: "")
+        botw.createdAt = "2023-11-12T00:00:00Z"
+        var odyssey = LibraryItem.newLocal(title: "Odyssey", platform: "Nintendo Switch", region: "us", completeness: "cib", notes: "")
+        odyssey.createdAt = "2023-11-12T00:00:00Z"
+        var ico = LibraryItem.newLocal(title: "Ico", platform: "PlayStation 2", region: "us", completeness: "cib", notes: "")
+        ico.createdAt = "2025-07-06T00:00:00Z"
+        var gone = LibraryItem.newLocal(title: "Deleted", platform: "Nintendo Switch", region: "us", completeness: "cib", notes: "")
+        gone.createdAt = "2024-01-01T00:00:00Z"
+        gone.deletedAt = LibraryItem.now()
+
+        let stats = ShelfStats(items: [botw, odyssey, ico, gone])
+        XCTAssertEqual(stats.countsByYear(), [
+            ShelfYearRow(year: 2023, count: 2),
+            ShelfYearRow(year: 2024, count: 0),
+            ShelfYearRow(year: 2025, count: 1),
+        ])
+        XCTAssertEqual(stats.countsByYear(platform: "Nintendo Switch"), [
+            ShelfYearRow(year: 2023, count: 2),
+        ])
+        XCTAssertEqual(ShelfStats.year(from: "2023-11-12T00:00:00Z"), 2023)
+    }
+
     private func quote(cib: Int, loose: Int) -> PriceQuote {
         PriceQuote(
             pcId: "ebay",

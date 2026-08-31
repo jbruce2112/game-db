@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, formatUSD, valueCents } from "../api";
@@ -27,6 +27,8 @@ export default function Stats() {
   });
   const items = lib.data?.items ?? [];
   const stats = useMemo(() => buildStats(items), [items]);
+  const [yearPlatform, setYearPlatform] = useState("");
+  const yearRows = useMemo(() => countsByYear(items, yearPlatform), [items, yearPlatform]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -53,6 +55,13 @@ export default function Stats() {
             <Hero label="With barcode" value={pct(stats.withBarcode, stats.total)} />
           </div>
 
+          <YearSection
+            platforms={stats.platforms.map((p) => p.name)}
+            platform={yearPlatform}
+            onPlatform={setYearPlatform}
+            rows={yearRows}
+          />
+
           {stats.priced > 0 && stats.shelfCents != null && (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -78,6 +87,91 @@ export default function Stats() {
         </div>
       )}
     </div>
+  );
+}
+
+function YearSection({
+  platforms,
+  platform,
+  onPlatform,
+  rows,
+}: {
+  platforms: string[];
+  platform: string;
+  onPlatform: (value: string) => void;
+  rows: { year: number; count: number }[];
+}) {
+  return (
+    <section>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 className="text-sm font-medium text-[#9aa3b2]">Added by year</h2>
+        <select
+          value={platform}
+          onChange={(e) => onPlatform(e.target.value)}
+          className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-1.5 text-sm"
+          aria-label="Filter added-by-year chart by platform"
+        >
+          <option value="">All platforms</option>
+          {platforms.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-[#9aa3b2]">No added dates to chart.</p>
+      ) : (
+        <>
+          <YearChart rows={rows} />
+          <p className="mt-2 text-xs text-[#9aa3b2]">Uses each copy’s added date. Empty years are shown as zero.</p>
+        </>
+      )}
+    </section>
+  );
+}
+
+function YearChart({ rows }: { rows: { year: number; count: number }[] }) {
+  const w = 640;
+  const h = 220;
+  const padL = 36;
+  const padR = 16;
+  const padT = 16;
+  const padB = 28;
+  const max = Math.max(...rows.map((r) => r.count), 1);
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+  const xAt = (i: number) => (rows.length === 1 ? padL + innerW / 2 : padL + (i / (rows.length - 1)) * innerW);
+  const yAt = (count: number) => padT + innerH - (count / max) * innerH;
+  const points = rows.map((row, i) => `${xAt(i)},${yAt(row.count)}`).join(" ");
+  const labelEvery = rows.length > 8 ? Math.ceil(rows.length / 8) : 1;
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className="mt-3 w-full overflow-visible rounded-xl border border-[#2a2e38] bg-[#16181f]"
+      role="img"
+      aria-label={rows.map((r) => `${r.year}: ${r.count}`).join(", ")}
+    >
+      <line x1={padL} y1={padT} x2={padL} y2={h - padB} stroke="#2a2e38" />
+      <line x1={padL} y1={h - padB} x2={w - padR} y2={h - padB} stroke="#2a2e38" />
+      <text x={4} y={padT + 4} fill="#9aa3b2" fontSize="11">
+        {max}
+      </text>
+      <text x={4} y={h - padB} fill="#9aa3b2" fontSize="11">
+        0
+      </text>
+      <polyline fill="none" stroke="#e2b14a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={points} />
+      {rows.map((row, i) => (
+        <g key={row.year}>
+          <circle cx={xAt(i)} cy={yAt(row.count)} r="3.5" fill="#e2b14a" />
+          {i % labelEvery === 0 && (
+            <text x={xAt(i)} y={h - 8} textAnchor="middle" fill="#9aa3b2" fontSize="11">
+              {row.year}
+            </text>
+          )}
+        </g>
+      ))}
+    </svg>
   );
 }
 
@@ -251,6 +345,33 @@ export function buildStats(items: LibraryItem[]) {
       .sort((a, b) => b.cents - a.cents || a.title.localeCompare(b.title))
       .slice(0, 10),
   };
+}
+
+export function countsByYear(items: LibraryItem[], platform = "") {
+  const live = items.filter((item) => !item.deleted_at);
+  const filtered = platform ? live.filter((item) => item.platform === platform) : live;
+  const map = new Map<number, number>();
+  for (const item of filtered) {
+    const y = yearOf(item.created_at);
+    if (y == null) continue;
+    map.set(y, (map.get(y) ?? 0) + 1);
+  }
+  if (map.size === 0) return [];
+  const years = [...map.keys()];
+  const minY = Math.min(...years);
+  const maxY = Math.max(...years);
+  const rows: { year: number; count: number }[] = [];
+  for (let y = minY; y <= maxY; y++) {
+    rows.push({ year: y, count: map.get(y) ?? 0 });
+  }
+  return rows;
+}
+
+function yearOf(iso: string) {
+  if (!iso || iso.length < 4) return null;
+  const y = Number(iso.slice(0, 4));
+  if (!Number.isInteger(y) || y < 1970 || y > 2100) return null;
+  return y;
 }
 
 function countBy(items: LibraryItem[], key: (i: LibraryItem) => string) {
