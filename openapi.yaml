@@ -169,6 +169,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LibraryItem" }
+  /v1/cache/clear:
+    post:
+      summary: Delete derived caches (covers, prices, barcode lookups, IGDB search rows)
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      responses:
+        "200":
+          description: Counts of rows/files removed. Library items are unchanged.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prices: { type: integer }
+                  covers: { type: integer }
+                  barcodes: { type: integer }
+                  games: { type: integer }
   /v1/library/{id}/cover:
     get:
       summary: Serve a cached cover, or download it from IGDB if missing

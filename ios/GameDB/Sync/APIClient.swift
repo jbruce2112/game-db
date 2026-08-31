@@ -128,6 +128,13 @@ final class APIClient {
         return try JSONDecoder().decode(LibraryItem.self, from: data)
     }
 
+    func clearCache() async throws {
+        let req = try request(path: "/v1/cache/clear", method: "POST")
+        let (data, resp) = try await session.data(for: req)
+        if let http = resp as? HTTPURLResponse, http.statusCode == 204 { return }
+        try throwIfNeeded(resp, data: data)
+    }
+
     func cover(id: String) async throws -> Data {
         let req = try request(path: "/v1/covers/\(id)", method: "GET")
         let (data, resp) = try await session.data(for: req)

@@ -439,6 +439,85 @@ func TestLibraryCoverOnDemandURLAndCachedFile(t *testing.T) {
 	}
 }
 
+func TestClearCache(t *testing.T) {
+	h := testHandler(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	item, err := h.store.Insert(context.Background(), model.Item{
+		ID:           "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+		Title:        "Sunshine",
+		Platform:     "Nintendo GameCube",
+		Completeness: "cib",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	coverID := "ffffffff-ffff-ffff-ffff-ffffffffffff"
+	payload := []byte("cover-bytes")
+	name, err := saveCoverFile(h.store.DataDir, coverID, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.SaveCover(context.Background(), coverID, "img", "image/jpeg", name); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.SetCoverID(context.Background(), item.ID, coverID); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.UpsertPriceQuote(context.Background(), store.PriceQuote{
+		ItemID: item.ID, QueryKey: "k", PCID: "1", ProductName: "Sunshine", Status: "ok", FetchedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.store.DB.Exec(`INSERT INTO barcode_cache (barcode, product_title, query, source, updated_at) VALUES ('123','t','q','test',?)`, model.FormatTime(now)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.store.DB.Exec(`INSERT INTO igdb_games (id, name, summary, cover_image_id, first_release_date, platforms_json, updated_at) VALUES (1,'Sunshine','','',NULL,'[]',?)`, model.FormatTime(now)); err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/cache/clear", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("status %d %s", res.StatusCode, body)
+	}
+	var cleared store.CacheClearResult
+	if err := json.NewDecoder(res.Body).Decode(&cleared); err != nil {
+		t.Fatal(err)
+	}
+	if cleared.Prices < 1 || cleared.Covers < 1 || cleared.Barcodes < 1 || cleared.Games < 1 {
+		t.Fatalf("%+v", cleared)
+	}
+	if h.store.CoverExists(context.Background(), &coverID) {
+		t.Fatal("cover file still present")
+	}
+	got, err := h.store.Get(context.Background(), item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Title != "Sunshine" {
+		t.Fatalf("item %+v", got)
+	}
+	quotes, err := h.store.PriceQuotes(context.Background(), []string{item.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(quotes) != 0 {
+		t.Fatalf("quotes %+v", quotes)
+	}
+}
+
 type fakePrices struct {
 	upc    pricecharting.Product
 	search []pricecharting.Product

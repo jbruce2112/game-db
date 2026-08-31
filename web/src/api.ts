@@ -94,6 +94,10 @@ export const api = {
   },
   searchBarcode: (q: string) =>
     req<BarcodeSearch>(`/v1/search/barcode?${new URLSearchParams({ q })}`),
+  clearCache: () =>
+    req<{ prices: number; covers: number; barcodes: number; games: number }>("/v1/cache/clear", {
+      method: "POST",
+    }),
 };
 
 export function coverSrc(item: { id: string; cover_url?: string | null; igdb_game_id?: number | null }) {

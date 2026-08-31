@@ -181,6 +181,38 @@ final class LibraryStore {
         }
     }
 
+    func clearCache() async {
+        errorMessage = nil
+        if isPaired {
+            do {
+                try await api.clearCache()
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
+        do {
+            try await db.write { db in
+                try db.execute(sql: "DELETE FROM price_quotes")
+            }
+            quotes = [:]
+            coverCache.removeAll()
+            let files = (try? FileManager.default.contentsOfDirectory(
+                at: AppDatabase.coversDir,
+                includingPropertiesForKeys: nil
+            )) ?? []
+            for url in files {
+                try? FileManager.default.removeItem(at: url)
+            }
+            try reload()
+            if isPaired {
+                await runSync()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func forgetServer() {
         if let token = KeychainStore.token(), let url = URL(string: serverURL) {
             api.configure(baseURL: url, token: token)

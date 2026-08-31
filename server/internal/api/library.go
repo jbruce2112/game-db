@@ -124,6 +124,17 @@ func (h *Handler) ensureCoverFromIGDB(ctx context.Context, item *model.Item) {
 	}
 }
 
+func (h *Handler) clearCache(w http.ResponseWriter, r *http.Request) {
+	out, err := h.store.ClearDerivedCache(r.Context())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.KickCoverBackfill()
+	h.KickPriceBackfill()
+	writeJSON(w, http.StatusOK, out)
+}
+
 func (h *Handler) importLibraryCSV(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 	if err != nil {

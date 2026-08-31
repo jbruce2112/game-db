@@ -77,6 +77,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("GET /v1/search/barcode", h.auth(h.searchBarcode))
 	mux.HandleFunc("GET /v1/covers/{id}", h.auth(h.cover))
 	mux.HandleFunc("GET /v1/library/{id}/cover", h.auth(h.libraryCover))
+	mux.HandleFunc("POST /v1/cache/clear", h.auth(h.clearCache))
 
 	mux.HandleFunc("GET /{path...}", h.spa)
 

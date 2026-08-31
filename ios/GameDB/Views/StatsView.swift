@@ -4,16 +4,22 @@ import SwiftUI
 struct StatsView: View {
     @Environment(LibraryStore.self) private var store
     @State private var yearPlatform = ""
+    @State private var confirmClear = false
+    @State private var clearing = false
 
     var body: some View {
         let stats = store.stats
         Group {
             if stats.total == 0 {
-                ContentUnavailableView(
-                    "Nothing on the shelf yet",
-                    systemImage: "chart.bar",
-                    description: Text("Add a game to see counts by platform, region, and completeness.")
-                )
+                List {
+                    ContentUnavailableView(
+                        "Nothing on the shelf yet",
+                        systemImage: "chart.bar",
+                        description: Text("Add a game to see counts by platform, region, and completeness.")
+                    )
+                    .listRowBackground(Color.clear)
+                    cacheSection
+                }
             } else {
                 List {
                     Section {
@@ -44,11 +50,39 @@ struct StatsView: View {
                     bars("Platforms", rows: stats.platforms, total: stats.total)
                     bars("Region", rows: stats.regions, total: stats.total)
                     bars("Completeness", rows: stats.completeness, total: stats.total)
+                    cacheSection
                 }
             }
         }
         .navigationTitle("Statistics")
         .preferredColorScheme(.dark)
+        .confirmationDialog(
+            "Clear cached covers and prices?",
+            isPresented: $confirmClear,
+            titleVisibility: .visible
+        ) {
+            Button("Clear cache", role: .destructive) {
+                clearing = true
+                Task {
+                    await store.clearCache()
+                    clearing = false
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("eBay prices and downloaded covers are removed. Games, dates, and notes stay. Covers and prices download again afterward.")
+        }
+    }
+
+    private var cacheSection: some View {
+        Section {
+            Button("Clear cached covers and prices", role: .destructive) {
+                confirmClear = true
+            }
+            .disabled(clearing)
+        } footer: {
+            Text("Removes eBay prices, downloaded covers, and lookup cache. Core library data is kept.")
+        }
     }
 
     private func yearChart(_ stats: ShelfStats) -> some View {

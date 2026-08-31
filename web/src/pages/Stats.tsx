@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, formatUSD, valueCents } from "../api";
 import type { LibraryItem } from "../types";
 
@@ -29,6 +29,34 @@ export default function Stats() {
   const stats = useMemo(() => buildStats(items), [items]);
   const [yearPlatform, setYearPlatform] = useState("");
   const yearRows = useMemo(() => countsByYear(items, yearPlatform), [items, yearPlatform]);
+  const qc = useQueryClient();
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState("");
+  const [clearNote, setClearNote] = useState("");
+
+  async function clearCache() {
+    if (
+      !confirm(
+        "Clear cached covers, eBay prices, and lookup data? Games, dates, and notes are kept. Covers and prices will download again.",
+      )
+    ) {
+      return;
+    }
+    setClearError("");
+    setClearNote("");
+    setClearing(true);
+    try {
+      const result = await api.clearCache();
+      await qc.invalidateQueries({ queryKey: ["library"] });
+      setClearNote(
+        `Cleared ${result.covers} covers, ${result.prices} prices, ${result.barcodes} barcode lookups.`,
+      );
+    } catch (err) {
+      setClearError(err instanceof Error ? err.message : "Clear failed");
+    } finally {
+      setClearing(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -86,7 +114,46 @@ export default function Stats() {
           <Section title="Completeness" rows={stats.completeness} total={stats.total} />
         </div>
       )}
+
+      <CacheClear
+        clearing={clearing}
+        error={clearError}
+        note={clearNote}
+        onClear={clearCache}
+      />
     </div>
+  );
+}
+
+function CacheClear({
+  clearing,
+  error,
+  note,
+  onClear,
+}: {
+  clearing: boolean;
+  error: string;
+  note: string;
+  onClear: () => void;
+}) {
+  return (
+    <section className="mt-16 border-t border-[#2a2e38] pt-8">
+      <h2 className="text-sm font-medium text-[#9aa3b2]">Cache</h2>
+      <p className="mt-2 text-sm text-[#9aa3b2]">
+        Remove downloaded covers, eBay asking prices, and barcode lookup cache. Core library
+        fields stay. Covers and prices are fetched again afterward.
+      </p>
+      <button
+        type="button"
+        onClick={onClear}
+        disabled={clearing}
+        className="mt-4 rounded-lg border border-[#5c2a2a] px-3 py-2 text-sm text-[#f0a0a0] disabled:opacity-40"
+      >
+        {clearing ? "Clearing…" : "Clear cached covers and prices"}
+      </button>
+      {note && <p className="mt-3 text-sm text-[#e2b14a]">{note}</p>}
+      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+    </section>
   );
 }
 
