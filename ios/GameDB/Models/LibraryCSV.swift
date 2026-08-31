@@ -75,8 +75,10 @@ enum LibraryCSV {
             if id.count != 36 { id = UUID().uuidString.lowercased() }
             if seen.contains(id) { throw CSVError.duplicateID }
             seen.insert(id)
-            let created = get(row, "created_at")
-            let updated = get(row, "updated_at")
+            let createdRaw = [get(row, "created_at"), get(row, "added date"), get(row, "date added")].first { !$0.isEmpty } ?? ""
+            let created = RFC3339.date(createdRaw).map(RFC3339.string) ?? (createdRaw.isEmpty ? now : createdRaw)
+            let updatedRaw = get(row, "updated_at")
+            let updated = RFC3339.date(updatedRaw).map(RFC3339.string) ?? (updatedRaw.isEmpty ? created : updatedRaw)
             items.append(LibraryItem(
                 id: id,
                 title: title,
@@ -97,8 +99,8 @@ enum LibraryCSV {
                     let b = get(row, "barcode").filter(\.isNumber)
                     return b.isEmpty ? nil : b
                 }(),
-                createdAt: created.isEmpty ? now : created,
-                updatedAt: updated.isEmpty ? (created.isEmpty ? now : created) : updated,
+                createdAt: created,
+                updatedAt: updated,
                 deletedAt: nil,
                 syncSeq: 0,
                 dirty: true,

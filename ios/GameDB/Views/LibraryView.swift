@@ -211,6 +211,10 @@ private struct GameGridCell: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+            Text(RFC3339.addedLabel(item.createdAt))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
             if let price {
                 Text(price)
                     .font(.caption2)

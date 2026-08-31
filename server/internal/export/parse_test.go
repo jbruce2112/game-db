@@ -95,8 +95,11 @@ func TestParseCLZExport(t *testing.T) {
 	if got[1].Region == nil || *got[1].Region != "jp" {
 		t.Fatalf("jp region %+v", got[1].Region)
 	}
-	if got[0].CreatedAt.IsZero() || got[0].CreatedAt.Year() != 2026 {
+	if got[0].CreatedAt.IsZero() || got[0].CreatedAt.Year() != 2026 || got[0].CreatedAt.Month() != time.August || got[0].CreatedAt.Day() != 29 {
 		t.Fatalf("added date %v", got[0].CreatedAt)
+	}
+	if got[1].CreatedAt.Month() != time.August || got[1].CreatedAt.Day() != 30 {
+		t.Fatalf("tetris added date %v", got[1].CreatedAt)
 	}
 }
 

@@ -47,6 +47,7 @@ struct GameDetailView: View {
                         .keyboardType(.numberPad)
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
+                    LabeledContent("Added to collection", value: RFC3339.addedLabel(item.createdAt))
                 }
                 if let quote = store.quotes[item.id] {
                     Section(quote.source == "ebay" ? "eBay asking" : "PriceCharting") {

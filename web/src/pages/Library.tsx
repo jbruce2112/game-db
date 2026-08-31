@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { api, coverSrc, formatUSD, valueCents } from "../api";
+import { api, coverSrc, formatAdded, formatUSD, valueCents } from "../api";
 import type { LibraryItem } from "../types";
 
 export default function Library({ igdb, prices = false }: { igdb: boolean; prices?: boolean }) {
@@ -218,6 +218,7 @@ export default function Library({ igdb, prices = false }: { igdb: boolean; price
                         {item.platform}
                         {item.region ? ` · ${item.region.toUpperCase()}` : ""}
                         {` · ${item.completeness}`}
+                        {formatAdded(item.created_at) ? ` · ${formatAdded(item.created_at)}` : ""}
                         {formatUSD(valueCents(item)) ? ` · ${formatUSD(valueCents(item))}` : ""}
                       </div>
                     </div>
@@ -305,6 +306,9 @@ function CoverCard({ item }: { item: LibraryItem }) {
         {item.title}
       </div>
       <div className="truncate text-xs text-[#9aa3b2]">{item.platform}</div>
+      {formatAdded(item.created_at) && (
+        <div className="truncate text-xs text-[#9aa3b2]">{formatAdded(item.created_at)}</div>
+      )}
       {formatUSD(valueCents(item)) && (
         <div className="truncate text-xs text-[#e2b14a]">{formatUSD(valueCents(item))}</div>
       )}

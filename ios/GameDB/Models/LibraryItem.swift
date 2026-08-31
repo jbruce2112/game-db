@@ -239,4 +239,32 @@ enum RFC3339 {
         f.timeZone = TimeZone(secondsFromGMT: 0)
         return f.string(from: date)
     }
+
+    static func date(_ raw: String) -> Date? {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.isEmpty { return nil }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        if let d = iso.date(from: s) { return d }
+        iso.formatOptions = [.withFullDate]
+        if let d = iso.date(from: s) { return d }
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        for format in ["MMM d, yyyy", "MMMM d, yyyy", "yyyy-MM-dd", "M/d/yyyy"] {
+            df.dateFormat = format
+            if let d = df.date(from: s) { return d }
+        }
+        return nil
+    }
+
+    /// CLZ added dates are stored as UTC midnight; show that calendar day.
+    static func addedLabel(_ raw: String) -> String {
+        guard let d = date(raw) else { return raw }
+        let out = DateFormatter()
+        out.locale = Locale(identifier: "en_US_POSIX")
+        out.timeZone = TimeZone(secondsFromGMT: 0)
+        out.dateFormat = "MMM d, yyyy"
+        return out.string(from: d)
+    }
 }

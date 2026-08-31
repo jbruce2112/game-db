@@ -102,6 +102,19 @@ export function coverSrc(item: { id: string; cover_url?: string | null; igdb_gam
   return null;
 }
 
+/** CLZ added dates are stored as UTC midnight; show that calendar day. */
+export function formatAdded(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function formatUSD(cents: number | null | undefined): string | null {
   if (cents == null || Number.isNaN(cents)) return null;
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });

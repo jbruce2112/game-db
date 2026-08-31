@@ -28,6 +28,7 @@
 		A1000000000000000000000E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C10000000000000000000002 /* GRDB */; };
 		A10000000000000000000020 /* GamePeekPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* GamePeekPreviewTests.swift */; };
 		A10000000000000000000022 /* ShelfStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* ShelfStatsTests.swift */; };
+		A10000000000000000000023 /* LibraryCSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000023 /* LibraryCSVTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 		B1000000000000000000000F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10000000000000000000020 /* GamePeekPreviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePeekPreviewTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000022 /* ShelfStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfStatsTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000023 /* LibraryCSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryCSVTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000021 /* GameDBTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GameDBTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -166,6 +168,7 @@
 			children = (
 				B10000000000000000000020 /* GamePeekPreviewTests.swift */,
 				B10000000000000000000022 /* ShelfStatsTests.swift */,
+				B10000000000000000000023 /* LibraryCSVTests.swift */,
 			);
 			path = GameDBTests;
 			sourceTree = "<group>";
@@ -298,6 +301,7 @@
 			files = (
 				A10000000000000000000020 /* GamePeekPreviewTests.swift in Sources */,
 				A10000000000000000000022 /* ShelfStatsTests.swift in Sources */,
+				A10000000000000000000023 /* LibraryCSVTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

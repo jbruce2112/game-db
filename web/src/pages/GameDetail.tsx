@@ -1,7 +1,7 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, coverSrc, formatUSD } from "../api";
+import { api, coverSrc, formatAdded, formatUSD } from "../api";
 import type { Completeness, Region } from "../types";
 
 export default function GameDetail() {
@@ -158,7 +158,7 @@ export default function GameDetail() {
             </div>
           )}
           <p className="text-xs text-[#9aa3b2]">
-            Added {new Date(q.data.created_at).toLocaleString()}
+            Added to collection {formatAdded(q.data.created_at)}
           </p>
           <div className="flex gap-2 pt-2">
             <button
