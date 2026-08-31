@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -195,10 +196,10 @@ func (c *Client) search(ctx context.Context, q, gtin string) ([]listing, error) 
 func filterListings(in []listing, title, platform string) []listing {
 	var out []listing
 	for _, l := range in {
-		low := strings.ToLower(l.Title)
-		if strings.Contains(low, "lot of") || strings.Contains(low, "bundle") || strings.Contains(low, "lot:") {
+		if skipListingTitle(l.Title) {
 			continue
 		}
+		low := strings.ToLower(l.Title)
 		score := barcode.NameScore(l.Title, title, nil, "")
 		if platform != "" && strings.Contains(low, strings.ToLower(platform)) {
 			score += 15
@@ -209,6 +210,37 @@ func filterListings(in []listing, title, platform string) []listing {
 		out = append(out, l)
 	}
 	return out
+}
+
+func skipListingTitle(title string) bool {
+	low := strings.ToLower(title)
+	if strings.Contains(low, "lot of") || strings.Contains(low, "bundle") || strings.Contains(low, "lot:") {
+		return true
+	}
+	return hasSpecialEditionToken(low)
+}
+
+func hasSpecialEditionToken(low string) bool {
+	start := 0
+	for i, r := range low {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			continue
+		}
+		if tokenSpecial(low[start:i]) {
+			return true
+		}
+		start = i + 1
+	}
+	return tokenSpecial(low[start:])
+}
+
+func tokenSpecial(w string) bool {
+	switch w {
+	case "signed", "autograph", "autographed", "signature", "numbered", "exclusive":
+		return true
+	default:
+		return false
+	}
 }
 
 func bucketPrices(in []listing) (loose, cib, neu []int) {
@@ -271,14 +303,14 @@ func medianPtr(vals []int) *int {
 		return nil
 	}
 	cp := append([]int(nil), vals...)
-	for i := 0; i < len(cp); i++ {
-		for j := i + 1; j < len(cp); j++ {
-			if cp[j] < cp[i] {
-				cp[i], cp[j] = cp[j], cp[i]
-			}
-		}
+	sort.Ints(cp)
+	n := len(cp)
+	var v int
+	if n%2 == 1 {
+		v = cp[n/2]
+	} else {
+		v = (cp[n/2-1] + cp[n/2] + 1) / 2
 	}
-	v := cp[len(cp)/2]
 	return &v
 }
 
