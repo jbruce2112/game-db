@@ -1,8 +1,8 @@
 import { FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, coverSrc, formatAdded, formatUSD } from "../api";
-import { useCoverArt } from "../coverArt";
+import { CoverImage } from "../CoverImage";
+import { api, formatAdded, formatUSD } from "../api";
 import type { Completeness, Region } from "../types";
 
 export default function GameDetail() {
@@ -56,16 +56,6 @@ export default function GameDetail() {
     },
   });
 
-  const [coverArt] = useCoverArt();
-  const preferred = q.data ? coverSrc(q.data, coverArt) : null;
-  const fallback = coverArt === "box" && q.data ? coverSrc(q.data, "poster") : null;
-  const [src, setSrc] = useState<string | null>(preferred);
-  const [coverFailed, setCoverFailed] = useState(false);
-  useEffect(() => {
-    setSrc(preferred);
-    setCoverFailed(false);
-  }, [id, preferred]);
-
   if (q.isLoading) return <p className="p-8 text-[#9aa3b2]">Loading…</p>;
   if (q.isError || !q.data) return <p className="p-8 text-red-400">Not found.</p>;
 
@@ -81,24 +71,7 @@ export default function GameDetail() {
       </Link>
       <div className="mt-6 grid gap-8 sm:grid-cols-[180px_1fr]">
         <div className="aspect-[3/4] overflow-hidden rounded-lg border border-[#2a2e38] bg-[#16181f]">
-          {src && !coverFailed ? (
-            <img
-              src={src}
-              alt=""
-              className="h-full w-full object-cover"
-              onError={() => {
-                if (fallback && src !== fallback) {
-                  setSrc(fallback);
-                  return;
-                }
-                setCoverFailed(true);
-              }}
-            />
-          ) : (
-            <div className="grid h-full place-items-center p-4 text-center text-sm text-[#9aa3b2]">
-              No cover
-            </div>
-          )}
+          <CoverImage item={q.data} />
         </div>
         <form onSubmit={onSave} className="space-y-3">
           <Field label="Title">

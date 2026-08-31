@@ -62,6 +62,22 @@ final class GamePeekPreviewTests: XCTestCase {
     }
 
     @MainActor
+    func testPeekPreviewHostsLandscapeBoxArt() {
+        let item = LibraryItem.newLocal(
+            title: "Mario 64",
+            platform: "Nintendo 64",
+            region: "us",
+            completeness: "cib",
+            notes: ""
+        )
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 20)).image { ctx in
+            UIColor.green.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 20))
+        }
+        hostAndLayout(GamePeekPreview(item: item, image: image))
+    }
+
+    @MainActor
     private func hostAndLayout<V: View>(_ root: V) {
         let host = UIHostingController(rootView: root)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))

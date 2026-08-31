@@ -12,7 +12,7 @@ struct CoverView: View {
             if let image {
                 Image(uiImage: image)
                     .resizable()
-                    .scaledToFill()
+                    .aspectRatio(contentMode: image.size.width > image.size.height ? .fit : .fill)
             } else {
                 Text(item.title)
                     .font(.caption2)

@@ -246,7 +246,7 @@ struct GamePeekPreview: View {
                 Image(uiImage: resolvedImage)
                     .renderingMode(.original)
                     .resizable()
-                    .scaledToFill()
+                    .aspectRatio(contentMode: resolvedImage.size.width > resolvedImage.size.height ? .fit : .fill)
             } else {
                 Text(item.title)
                     .font(.headline)

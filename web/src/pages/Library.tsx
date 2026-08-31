@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { api, coverSrc, formatAdded, formatUSD, valueCents } from "../api";
+import { CoverImage } from "../CoverImage";
+import { api, formatAdded, formatUSD, valueCents } from "../api";
 import { useCoverArt } from "../coverArt";
 import type { LibraryItem } from "../types";
 
@@ -335,7 +336,7 @@ function CoverCard({ item }: { item: LibraryItem }) {
   return (
     <Link to={`/game/${item.id}`} className="group block">
       <div className="aspect-[3/4] overflow-hidden rounded-lg border border-[#2a2e38] bg-[#16181f]">
-        <CoverImg item={item} />
+        <CoverImage item={item} />
       </div>
       <div className="mt-2 truncate text-sm font-medium group-hover:text-[#e2b14a]">
         {item.title}
@@ -354,40 +355,7 @@ function CoverCard({ item }: { item: LibraryItem }) {
 function CoverThumb({ item }: { item: LibraryItem }) {
   return (
     <div className="h-14 w-10 shrink-0 overflow-hidden rounded border border-[#2a2e38] bg-[#16181f]">
-      <CoverImg item={item} />
+      <CoverImage item={item} />
     </div>
-  );
-}
-
-function CoverImg({ item }: { item: LibraryItem }) {
-  const [coverArt] = useCoverArt();
-  const preferred = coverSrc(item, coverArt);
-  const fallback = coverArt === "box" ? coverSrc(item, "poster") : null;
-  const [src, setSrc] = useState<string | null>(preferred);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    setSrc(preferred);
-    setFailed(false);
-  }, [preferred]);
-  if (!src || failed) {
-    return (
-      <div className="grid h-full w-full place-items-center px-2 text-center text-xs text-[#9aa3b2]">
-        {item.title}
-      </div>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      className="h-full w-full object-cover"
-      onError={() => {
-        if (fallback && src !== fallback) {
-          setSrc(fallback);
-          return;
-        }
-        setFailed(true);
-      }}
-    />
   );
 }
