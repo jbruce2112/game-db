@@ -9,7 +9,9 @@ final class LibraryStore {
     var items: [LibraryItem] = []
     var query: String = ""
     var platformFilter: String = ""
-    var sort: String = "title"
+    var sort: String = LibraryStore.loadSort() {
+        didSet { UserDefaults.standard.set(sort, forKey: "librarySort") }
+    }
     var serverURL: String = UserDefaults.standard.string(forKey: "serverURL") ?? ""
     var lastSync: Date? = UserDefaults.standard.object(forKey: "lastSync") as? Date
     var online: Bool = false
@@ -355,6 +357,10 @@ final class LibraryStore {
             _ = await coverImage(for: item.coverId)
             _ = await coverImage(for: item.boxCoverId)
         }
+    }
+
+    static func loadSort() -> String {
+        UserDefaults.standard.string(forKey: "librarySort") == "added" ? "added" : "title"
     }
 
     static func normalizedServerURL(_ raw: String) -> String {

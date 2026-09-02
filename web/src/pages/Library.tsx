@@ -17,7 +17,7 @@ export default function Library({
 }) {
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState("");
-  const [sort, setSort] = useState("title");
+  const [sort, setSort] = useState(loadSort);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [coverArt, setCoverArt] = useCoverArt();
   const [importing, setImporting] = useState(false);
@@ -170,7 +170,11 @@ export default function Library({
             />
             <select
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSort(next);
+                saveSort(next);
+              }}
               className="rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
             >
               <option value="title">Title</option>
@@ -330,6 +334,26 @@ function PlatformRow({
       <span className={`tabular-nums ${active ? "text-[#e2b14a]" : "text-[#9aa3b2]"}`}>{count}</span>
     </button>
   );
+}
+
+const SORT_KEY = "librarySort";
+
+function loadSort(): string {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    if (v === "added" || v === "title") return v;
+  } catch {
+    /* ignore */
+  }
+  return "title";
+}
+
+function saveSort(sort: string) {
+  try {
+    localStorage.setItem(SORT_KEY, sort);
+  } catch {
+    /* ignore */
+  }
 }
 
 function CoverCard({ item }: { item: LibraryItem }) {
