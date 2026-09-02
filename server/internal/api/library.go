@@ -304,6 +304,12 @@ func (h *Handler) createLibrary(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "title and platform are required")
 		return
 	}
+	switch item.Completeness {
+	case model.CompletenessLoose, model.CompletenessCIB, model.CompletenessNew:
+	default:
+		writeErr(w, http.StatusBadRequest, "completeness is required")
+		return
+	}
 
 	out, err := h.store.Insert(r.Context(), item)
 	if err != nil {

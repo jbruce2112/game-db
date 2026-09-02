@@ -120,7 +120,7 @@ func TestImportCSVReplacesLibrary(t *testing.T) {
 	res.Body.Close()
 	auth := func(req *http.Request) { req.Header.Set("Authorization", "Bearer "+login.Token) }
 
-	create, _ := json.Marshal(map[string]string{"title": "Old Game", "platform": "NES"})
+	create, _ := json.Marshal(map[string]string{"title": "Old Game", "platform": "NES", "completeness": "cib"})
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
 	req.Header.Set("Content-Type", "application/json")
 	auth(req)
@@ -174,7 +174,7 @@ func TestExportCSV(t *testing.T) {
 	}
 	res.Body.Close()
 
-	create, _ := json.Marshal(map[string]string{"title": "Mario, Sunshine", "platform": "GameCube", "notes": `say "hi"`})
+	create, _ := json.Marshal(map[string]string{"title": "Mario, Sunshine", "platform": "GameCube", "completeness": "cib", "notes": `say "hi"`})
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+login.Token)
@@ -273,9 +273,10 @@ func TestCreateStoresBarcode(t *testing.T) {
 	token := loginToken(t, client, srv.URL)
 
 	create, _ := json.Marshal(map[string]string{
-		"title":    "Sunshine",
-		"platform": "GameCube",
-		"barcode":  "0 45496 59037 6",
+		"title":        "Sunshine",
+		"platform":     "GameCube",
+		"completeness": "cib",
+		"barcode":      "0 45496 59037 6",
 	})
 	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/library", bytes.NewReader(create))
 	req.Header.Set("Content-Type", "application/json")

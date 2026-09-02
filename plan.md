@@ -181,16 +181,12 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 **Next**
 
 - ebay pricing issues
-- Duplicate game detection/warning when adding
-- More graceful bulk add flow
-- Require completeness when adding (do not allow leaving it unset)
 
 **Explicitly not v1** (backlog)
-
+- Price check
 - Wishlist, multiple collections, hardware, amiibo
 - Custom fields
 - Custom cover upload, back-of-box photos
-- Multi-user, owner field, sharing
 - Bonjour/NAS discovery, push notifications
 - Android, public App Store listing
 

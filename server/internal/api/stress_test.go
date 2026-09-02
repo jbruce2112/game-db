@@ -108,7 +108,7 @@ func TestExtremeStress(t *testing.T) {
 				body := map[string]any{
 					"title":        stressTitle(n),
 					"platform":     stressPlatform(n),
-					"completeness": []string{"unknown", "loose", "cib", "new"}[n%4],
+					"completeness": []string{"loose", "cib", "new"}[n%3],
 					"notes":        fmt.Sprintf("note %d, \"quoted\"", n),
 					"region":       []string{"us", "eu", "jp", "au", "other"}[n%5],
 					"barcode":      stressBarcode(n),
@@ -294,9 +294,10 @@ func TestExtremeStress(t *testing.T) {
 				}
 				if n%5 == 0 {
 					body := map[string]any{
-						"title":    got.Query,
-						"platform": got.Platform,
-						"barcode":  code,
+						"title":        got.Query,
+						"platform":     got.Platform,
+						"completeness": "cib",
+						"barcode":      code,
 					}
 					var item model.Item
 					if err := doJSON(client, token, http.MethodPost, srv.URL+"/v1/library", body, http.StatusCreated, &item); err != nil {

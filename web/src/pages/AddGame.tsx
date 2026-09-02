@@ -188,11 +188,13 @@ function BarcodeAdd({ igdb, onAdded }: { igdb: boolean; onAdded: (name: string) 
     enabled: !!lookup,
   });
   const [picked, setPicked] = useState<SearchGame | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
     const games = result.data?.games ?? [];
     setPicked(games[0] ?? null);
-  }, [result.data]);
+    if (result.data && lookup) setReviewOpen(true);
+  }, [result.data, lookup]);
 
   function submit(code: string, fromCamera = false) {
     const digits = code.replace(/\D/g, "");
@@ -209,10 +211,19 @@ function BarcodeAdd({ igdb, onAdded }: { igdb: boolean; onAdded: (name: string) 
     setQ("");
     setLookup("");
     setPicked(null);
+    setReviewOpen(false);
     onAdded(name);
     if (usedCamera && canScanBarcode()) {
       setScanning(true);
     }
+  }
+
+  function cancelReview() {
+    setReviewOpen(false);
+    setLookup("");
+    setQ("");
+    setPicked(null);
+    setUsedCamera(false);
   }
 
   return (
@@ -242,6 +253,7 @@ function BarcodeAdd({ igdb, onAdded }: { igdb: boolean; onAdded: (name: string) 
         )}
         <button className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111]">Lookup</button>
       </form>
+      <p className="mt-2 text-xs text-[#9aa3b2]">Scan or look up a barcode, then confirm the details before it is saved.</p>
       {scanning && (
         <BarcodeScanner
           onCode={(code) => submit(code, true)}
@@ -253,68 +265,73 @@ function BarcodeAdd({ igdb, onAdded }: { igdb: boolean; onAdded: (name: string) 
       )}
       {result.isLoading && <p className="mt-4 text-[#9aa3b2]">Looking up barcode…</p>}
       {result.isError && <p className="mt-4 text-red-400">Barcode lookup failed.</p>}
-      {result.data?.lookup_error && <p className="mt-4 text-sm text-[#9aa3b2]">{result.data.lookup_error}</p>}
-      {result.data && (
-        <div className="mt-4 space-y-2 text-sm text-[#9aa3b2]">
-          {result.data.product_title && <p>Catalog: {result.data.product_title}</p>}
-          {result.data.owned.length > 0 && (
-            <p>
-              Already on the shelf: {result.data.owned.map((o) => `${o.title} (${o.platform})`).join(", ")}. You can
-              still add another copy.
-            </p>
-          )}
-          {result.isSuccess && !picked && (result.data.games ?? []).length === 0 && (
-            <p>
-              {result.data.product_title
-                ? "No IGDB match. Add it manually — the barcode will be saved."
-                : "No product found for that barcode. Search by title or add it manually."}
-            </p>
-          )}
-        </div>
-      )}
-      {!picked && (
-        <ul className="mt-4 space-y-2">
-          {(result.data?.games ?? []).map((g) => (
-            <li key={g.igdb_id}>
-              <button
-                onClick={() => setPicked(g)}
-                className="flex w-full items-center gap-3 rounded-lg border border-[#2a2e38] bg-[#16181f] p-2 text-left hover:border-[#e2b14a]"
-              >
-                <div className="h-16 w-12 overflow-hidden rounded bg-[#0e0f12]">
-                  {g.cover_url ? <img src={g.cover_url} alt="" className="h-full w-full object-cover" /> : null}
-                </div>
-                <div>
-                  <div className="font-medium text-[#e8eaef]">{g.name}</div>
-                  <div className="text-xs text-[#9aa3b2]">{g.platforms.map((p) => p.name).join(", ") || "No platforms"}</div>
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {picked && (
-        <ConfirmIGDB
-          key={picked.igdb_id}
-          game={picked}
-          preferredPlatformId={hintPlatformId(picked, result.data?.platform_hint)}
-          barcode={result.data?.barcode}
-          onCancel={() => setPicked(null)}
-          onAdded={afterAdded}
-        />
-      )}
-      {result.data && !picked && (result.data.games ?? []).length === 0 && (
-        <div className="mt-6">
-          <ManualAdd
-            key={result.data.barcode}
-            initialTitle={result.data.query || result.data.product_title}
-            initialPlatform={result.data.platform || ""}
-            initialBarcode={result.data.barcode}
-            onAdded={afterAdded}
-          />
-        </div>
+      {result.data?.lookup_error && !reviewOpen && (
+        <p className="mt-4 text-sm text-[#9aa3b2]">{result.data.lookup_error}</p>
       )}
       {!igdb && lookup && !result.data?.product_title && (
         <p className="mt-3 text-sm text-[#9aa3b2]">IGDB is not configured, so only the product title can be filled.</p>
+      )}
+      {reviewOpen && result.data && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-[#2a2e38] bg-[#16181f] p-4 shadow-xl">
+            <h2 className="text-lg font-semibold">Review copy</h2>
+            {result.data.owned.length > 0 && (
+              <p className="mt-2 text-sm text-[#e2b14a]">
+                Already on the shelf: {result.data.owned.map((o) => `${o.title} (${o.platform})`).join(", ")}. You can
+                still add another copy.
+              </p>
+            )}
+            {picked ? (
+              <>
+                <ConfirmIGDB
+                  key={picked.igdb_id}
+                  game={picked}
+                  preferredPlatformId={hintPlatformId(picked, result.data.platform_hint)}
+                  barcode={result.data.barcode}
+                  addLabel="Add"
+                  cancelLabel="Cancel"
+                  embedded
+                  onCancel={cancelReview}
+                  onAdded={afterAdded}
+                />
+                {(result.data.games ?? []).length > 1 && (
+                  <div className="mt-4">
+                    <div className="text-xs text-[#9aa3b2]">Other matches</div>
+                    <ul className="mt-2 space-y-2">
+                      {result.data.games.map((g) => (
+                        <li key={g.igdb_id}>
+                          <button
+                            type="button"
+                            onClick={() => setPicked(g)}
+                            className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left text-sm ${
+                              picked.igdb_id === g.igdb_id
+                                ? "border-[#e2b14a]"
+                                : "border-[#2a2e38] hover:border-[#e2b14a]"
+                            }`}
+                          >
+                            <div>
+                              <div className="font-medium">{g.name}</div>
+                              <div className="text-xs text-[#9aa3b2]">{g.platforms.map((p) => p.name).join(", ")}</div>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : (
+              <ManualAdd
+                key={result.data.barcode}
+                initialTitle={result.data.query || result.data.product_title}
+                initialPlatform={result.data.platform || ""}
+                initialBarcode={result.data.barcode}
+                onCancel={cancelReview}
+                onAdded={afterAdded}
+              />
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -324,12 +341,18 @@ function ConfirmIGDB({
   game,
   preferredPlatformId,
   barcode,
+  addLabel = "Add to library",
+  cancelLabel = "Back",
+  embedded = false,
   onCancel,
   onAdded,
 }: {
   game: SearchGame;
   preferredPlatformId?: number;
   barcode?: string;
+  addLabel?: string;
+  cancelLabel?: string;
+  embedded?: boolean;
   onCancel: () => void;
   onAdded: (name: string) => void;
 }) {
@@ -340,7 +363,7 @@ function ConfirmIGDB({
     return game.platforms[0]?.id ?? 0;
   });
   const [region, setRegion] = useState("us");
-  const [completeness, setCompleteness] = useState<Completeness>("unknown");
+  const [completeness, setCompleteness] = useState<Completeness | "">("");
   const add = useMutation({
     mutationFn: () =>
       api.create({
@@ -352,9 +375,10 @@ function ConfirmIGDB({
       }),
     onSuccess: () => onAdded(game.name),
   });
+  const completenessSet = completeness === "loose" || completeness === "cib" || completeness === "new";
 
   return (
-    <div className="mt-4 rounded-xl border border-[#2a2e38] bg-[#16181f] p-4">
+    <div className={embedded ? "mt-3" : "mt-4 rounded-xl border border-[#2a2e38] bg-[#16181f] p-4"}>
       <div className="font-medium">{game.name}</div>
       {game.summary && (
         <p className="mt-2 line-clamp-4 text-sm text-[#9aa3b2]">{game.summary}</p>
@@ -392,11 +416,14 @@ function ConfirmIGDB({
         <label className="text-sm text-[#9aa3b2]">
           Completeness
           <select
+            required
             value={completeness}
             onChange={(e) => setCompleteness(e.target.value as Completeness)}
             className="mt-1 w-full rounded-lg border border-[#2a2e38] bg-[#0e0f12] px-3 py-2 text-sm"
           >
-            <option value="unknown">Unknown</option>
+            <option value="" disabled>
+              Select…
+            </option>
             <option value="loose">Loose</option>
             <option value="cib">CIB</option>
             <option value="new">New / sealed</option>
@@ -407,13 +434,13 @@ function ConfirmIGDB({
       <div className="mt-4 flex gap-2">
         <button
           onClick={() => add.mutate()}
-          disabled={add.isPending}
-          className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111]"
+          disabled={add.isPending || !completenessSet}
+          className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111] disabled:opacity-40"
         >
-          Add to library
+          {addLabel}
         </button>
-        <button onClick={onCancel} className="text-sm text-[#9aa3b2]">
-          Back
+        <button type="button" onClick={onCancel} className="rounded-lg border border-[#2a2e38] px-4 py-2 text-sm text-[#9aa3b2]">
+          {cancelLabel}
         </button>
       </div>
     </div>
@@ -424,23 +451,28 @@ function ManualAdd({
   initialTitle = "",
   initialPlatform = "",
   initialBarcode = "",
+  onCancel,
   onAdded,
 }: {
   initialTitle?: string;
   initialPlatform?: string;
   initialBarcode?: string;
+  onCancel?: () => void;
   onAdded: (name: string) => void;
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [platform, setPlatform] = useState(initialPlatform);
   const [region, setRegion] = useState("us");
-  const [completeness, setCompleteness] = useState<Completeness>("unknown");
+  const [completeness, setCompleteness] = useState<Completeness | "">("");
   const [notes, setNotes] = useState("");
   const [barcode, setBarcode] = useState(initialBarcode);
   const qc = useQueryClient();
 
+  const completenessSet = completeness === "loose" || completeness === "cib" || completeness === "new";
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!completenessSet) return;
     await api.create({
       title,
       platform,
@@ -496,11 +528,14 @@ function ManualAdd({
       <label className="block text-sm text-[#9aa3b2]">
         Completeness
         <select
+          required
           value={completeness}
           onChange={(e) => setCompleteness(e.target.value as Completeness)}
           className="mt-1 w-full rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
         >
-          <option value="unknown">Unknown</option>
+          <option value="" disabled>
+            Select…
+          </option>
           <option value="loose">Loose</option>
           <option value="cib">CIB</option>
           <option value="new">New / sealed</option>
@@ -524,9 +559,23 @@ function ManualAdd({
           className="mt-1 w-full rounded-lg border border-[#2a2e38] bg-[#16181f] px-3 py-2 text-sm"
         />
       </label>
-      <button className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111]">
-        Add to library
-      </button>
+      <div className="flex gap-2">
+        <button
+          disabled={!completenessSet}
+          className="rounded-lg bg-[#e2b14a] px-4 py-2 text-sm font-medium text-[#111] disabled:opacity-40"
+        >
+          {onCancel ? "Add" : "Add to library"}
+        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-[#2a2e38] px-4 py-2 text-sm text-[#9aa3b2]"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }
