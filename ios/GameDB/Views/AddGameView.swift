@@ -4,7 +4,6 @@ import UIKit
 struct AddGameView: View {
     @Environment(LibraryStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    var initialTab: Int = 0
     @State private var tab = 0
     @State private var title = ""
     @State private var platform = ""
@@ -28,8 +27,8 @@ struct AddGameView: View {
         NavigationStack {
             Form {
                 Picker("Mode", selection: $tab) {
-                    Text("Search").tag(0)
-                    Text("Scan").tag(1)
+                    Text("Scan").tag(0)
+                    Text("Search").tag(1)
                     Text("Manual").tag(2)
                 }
                 .pickerStyle(.segmented)
@@ -47,9 +46,9 @@ struct AddGameView: View {
                 }
 
                 if tab == 0 {
-                    searchSection
-                } else if tab == 1 {
                     scanSection
+                } else if tab == 1 {
+                    searchSection
                 } else {
                     manualSection
                 }
@@ -63,7 +62,6 @@ struct AddGameView: View {
                     Button(addedCount > 0 ? "Done" : "Close") { dismiss() }
                 }
             }
-            .onAppear { tab = initialTab }
             .sheet(isPresented: $showScanner) {
                 NavigationStack {
                     BarcodeScannerView { code in
@@ -149,7 +147,7 @@ struct AddGameView: View {
             }
         }
         resultSections
-        if tab == 1, !searching, picked == nil, results.isEmpty, let product = barcodeResult?.productTitle, !product.isEmpty {
+        if tab == 0, !searching, picked == nil, results.isEmpty, let product = barcodeResult?.productTitle, !product.isEmpty {
             Section("Add without IGDB") {
                 TextField("Title", text: $title)
                 TextField("Platform", text: $platform)
@@ -342,7 +340,7 @@ struct AddGameView: View {
     private func addFromIGDB() async {
         guard let picked else { return }
         do {
-            let code = tab == 0 ? "" : digits(barcode)
+            let code = tab == 1 ? "" : digits(barcode)
             var item = try await store.api.createFromIGDB(
                 gameId: picked.igdbId,
                 platformId: resolvedPlatformId(picked),
@@ -372,7 +370,7 @@ struct AddGameView: View {
         platform = ""
         notes = ""
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        if tab == 1, keepScanning, BarcodeScannerView.isAvailable {
+        if tab == 0, keepScanning, BarcodeScannerView.isAvailable {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
                 showScanner = true
             }

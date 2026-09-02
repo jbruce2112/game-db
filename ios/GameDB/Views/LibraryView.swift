@@ -4,7 +4,6 @@ import UIKit
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var store
     @State private var showAdd = false
-    @State private var addTab = 0
     @State private var showSettings = false
     @State private var csvShare: CSVShare?
     @State private var compactColumn: NavigationSplitViewColumn = .detail
@@ -46,7 +45,7 @@ struct LibraryView: View {
         .sheet(item: $csvShare) { share in
             ShareSheet(items: [share.url])
         }
-        .sheet(isPresented: $showAdd) { AddGameView(initialTab: addTab) }
+        .sheet(isPresented: $showAdd) { AddGameView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
     }
 
@@ -117,50 +116,52 @@ struct LibraryView: View {
                     }
                     .accessibilityLabel("Settings")
                 }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showStats = true } label: {
-                        Image(systemName: "chart.bar")
-                    }
-                    .accessibilityLabel("Statistics")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        store.coverArt = store.coverArt == .box ? .poster : .box
-                    } label: {
-                        Image(systemName: store.coverArt == .box ? "shippingbox.fill" : "photo")
-                    }
-                    .accessibilityLabel(store.coverArt == .box ? "Showing platform box art" : "Showing poster art")
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Title") { store.sort = "title" }
-                        Button("Date added") { store.sort = "added" }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        let active = store.items.filter { ($0.deletedAt ?? "").isEmpty }
-                        if let url = try? LibraryCSV.fileURL(from: active) {
-                            csvShare = CSVShare(url: url)
+                        Section("Cover art") {
+                            Button {
+                                store.coverArt = .poster
+                            } label: {
+                                Label("IGDB posters", systemImage: store.coverArt == .poster ? "checkmark" : "photo")
+                            }
+                            Button {
+                                store.coverArt = .box
+                            } label: {
+                                Label("Platform boxes", systemImage: store.coverArt == .box ? "checkmark" : "shippingbox")
+                            }
                         }
+                        Button("Statistics", systemImage: "chart.bar") { showStats = true }
+                        Section("Sort") {
+                            Button {
+                                store.sort = "title"
+                            } label: {
+                                Label("Title", systemImage: store.sort == "title" ? "checkmark" : "textformat")
+                            }
+                            Button {
+                                store.sort = "added"
+                            } label: {
+                                Label("Date added", systemImage: store.sort == "added" ? "checkmark" : "calendar")
+                            }
+                        }
+                        Button("Export CSV", systemImage: "square.and.arrow.up") {
+                            let active = store.items.filter { ($0.deletedAt ?? "").isEmpty }
+                            if let url = try? LibraryCSV.fileURL(from: active) {
+                                csvShare = CSVShare(url: url)
+                            }
+                        }
+                        .disabled(store.items.filter { ($0.deletedAt ?? "").isEmpty }.isEmpty)
                     } label: {
-                        Image(systemName: "square.and.arrow.up")
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .disabled(store.items.filter { ($0.deletedAt ?? "").isEmpty }.isEmpty)
+                    .accessibilityLabel("More")
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
-                        addTab = 1
                         showAdd = true
-                    } label: { Image(systemName: "barcode.viewfinder") }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        addTab = 0
-                        showAdd = true
-                    } label: { Image(systemName: "plus") }
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add game")
                 }
             }
             .overlay(alignment: .bottom) {

@@ -31,7 +31,7 @@ export default function AddGame({ igdb }: { igdb: boolean }) {
           onClick={() => setTab("search")}
           className={`rounded-lg px-3 py-1.5 ${tab === "search" ? "bg-[#e2b14a] text-[#111]" : "border border-[#2a2e38] text-[#9aa3b2]"}`}
         >
-          Search IGDB
+          Search
         </button>
         <button
           onClick={() => setTab("barcode")}
