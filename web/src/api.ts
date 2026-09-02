@@ -1,4 +1,4 @@
-import type { BarcodeSearch, LibraryItem, Platform, SearchGame } from "./types";
+import type { BarcodeSearch, LibraryItem, Platform, PriceCheck, SearchGame } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -95,6 +95,13 @@ export const api = {
   },
   searchBarcode: (q: string) =>
     req<BarcodeSearch>(`/v1/search/barcode?${new URLSearchParams({ q })}`),
+  checkPrice: (params: { title?: string; platform?: string; barcode?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.title) qs.set("title", params.title);
+    if (params.platform) qs.set("platform", params.platform);
+    if (params.barcode) qs.set("barcode", params.barcode);
+    return req<PriceCheck>(`/v1/prices/check?${qs}`);
+  },
   clearCache: () =>
     req<{ prices: number; covers: number; barcodes: number; games: number }>("/v1/cache/clear", {
       method: "POST",

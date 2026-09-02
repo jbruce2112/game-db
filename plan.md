@@ -147,6 +147,7 @@ All JSON, prefix `/v1`. OpenAPI file at repo root is the contract (`openapi.yaml
 | GET | `/v1/platforms` | Curated IGDB consoles/handhelds (+ PC) |
 | GET | `/v1/search/games?q=&platform=` | Proxied IGDB search |
 | GET | `/v1/search/barcode?q=` | UPC/EAN → product title + IGDB search |
+| GET | `/v1/prices/check?title=&platform=&barcode=` | Loose / CIB / New quotes without adding a copy |
 | GET | `/v1/covers/{id}` | Cached image bytes |
 | GET | `/v1/library/{id}/cover` | Cached cover, or re-download from IGDB |
 
@@ -165,6 +166,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Empty states and a visible sync/offline indicator on iOS
 - Statistics: totals plus breakdowns by platform, region, and completeness (cover and barcode coverage)
 - Asking prices from eBay (optional PriceCharting fallback); quotes are cached on the server
+- Price check: scan or search a game and show Loose, CIB, and New without adding a copy
 
 **Web-only**
 
@@ -183,7 +185,6 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - ebay pricing issues
 
 **Explicitly not v1** (backlog)
-- Price check
 - Wishlist, multiple collections, hardware, amiibo
 - Custom fields
 - Custom cover upload, back-of-box photos

@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"time"
 
 	"game-db/internal/barcode"
@@ -204,4 +206,74 @@ func pcHit(p pricecharting.Product) pricedHit {
 		ID: p.ID, Name: p.Name, Console: p.Console, URL: p.URL(),
 		Source: "pricecharting", Loose: p.Loose, CIB: p.CIB, New: p.New,
 	}
+}
+
+type priceCheckResponse struct {
+	Title    string       `json:"title"`
+	Platform string       `json:"platform"`
+	Barcode  string       `json:"barcode,omitempty"`
+	Status   string       `json:"status"`
+	Value    *model.Value `json:"value"`
+}
+
+func (h *Handler) checkPrice(w http.ResponseWriter, r *http.Request) {
+	if !h.cfg.PricesConfigured() {
+		writeErr(w, http.StatusServiceUnavailable, "pricing is not configured")
+		return
+	}
+	title := strings.TrimSpace(r.URL.Query().Get("title"))
+	platform := strings.TrimSpace(r.URL.Query().Get("platform"))
+	region := strings.TrimSpace(r.URL.Query().Get("region"))
+	rawCode := strings.TrimSpace(r.URL.Query().Get("barcode"))
+
+	var code *string
+	if rawCode != "" {
+		normalized, err := barcode.Normalize(rawCode)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		code = &normalized
+	}
+	if title == "" && code == nil {
+		writeErr(w, http.StatusBadRequest, "title or barcode is required")
+		return
+	}
+
+	item := model.Item{Title: title, Platform: platform, Barcode: code}
+	if region != "" {
+		if n := model.NormalizeRegion(region); n != nil {
+			item.Region = n
+		}
+	}
+
+	prod, err := h.lookupPriceProduct(r.Context(), item)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	out := priceCheckResponse{
+		Title:    title,
+		Platform: platform,
+		Status:   "not_found",
+	}
+	if code != nil {
+		out.Barcode = *code
+	}
+	if prod.ID != "" {
+		out.Status = "ok"
+		out.Value = &model.Value{
+			PCID:        prod.ID,
+			ProductName: prod.Name,
+			ConsoleName: prod.Console,
+			URL:         prod.URL,
+			Source:      prod.Source,
+			Listings:    prod.Listings,
+			LooseCents:  prod.Loose,
+			CIBCents:    prod.CIB,
+			NewCents:    prod.New,
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }

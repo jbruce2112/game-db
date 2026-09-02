@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Library from "./pages/Library";
 import GameDetail from "./pages/GameDetail";
 import AddGame from "./pages/AddGame";
+import PriceCheck from "./pages/PriceCheck";
 import Stats from "./pages/Stats";
 
 export default function App() {
@@ -43,7 +44,8 @@ export default function App() {
             />
           }
         />
-        <Route path="/add" element={<AddGame igdb={me.data.igdb_configured} />} />
+        <Route path="/add" element={<AddGame igdb={!!me.data?.igdb_configured} />} />
+        <Route path="/price-check" element={<PriceCheck igdb={!!me.data?.igdb_configured} prices={!!me.data?.prices_configured} />} />
         <Route path="/game/:id" element={<GameDetail />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="*" element={<Navigate to="/" replace />} />

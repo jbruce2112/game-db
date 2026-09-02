@@ -34,6 +34,14 @@ export type PriceValue = {
   new_cents: number | null;
 };
 
+export type PriceCheck = {
+  title: string;
+  platform: string;
+  barcode?: string;
+  status: "ok" | "not_found";
+  value: PriceValue | null;
+};
+
 export type Platform = {
   id: number;
   name: string;

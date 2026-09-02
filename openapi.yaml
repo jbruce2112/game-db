@@ -315,6 +315,42 @@ paths:
                         platform: { type: string }
         "400":
           $ref: "#/components/responses/Error"
+  /v1/prices/check:
+    get:
+      summary: Look up Loose, CIB, and New asking prices without adding a library item
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
+      parameters:
+        - in: query
+          name: title
+          schema: { type: string }
+        - in: query
+          name: platform
+          schema: { type: string }
+        - in: query
+          name: barcode
+          schema: { type: string }
+        - in: query
+          name: region
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title: { type: string }
+                  platform: { type: string }
+                  barcode: { type: string }
+                  status: { type: string, enum: [ok, not_found] }
+                  value:
+                    nullable: true
+                    allOf:
+                      - $ref: "#/components/schemas/PriceValue"
+        "400":
+          $ref: "#/components/responses/Error"
+        "503":
+          description: eBay / PriceCharting not configured
   /v1/covers/{id}:
     get:
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]

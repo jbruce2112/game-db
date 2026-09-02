@@ -10,6 +10,7 @@ struct LibraryView: View {
     @State private var pendingDelete: LibraryItem?
     @State private var openFromMenu: LibraryItem?
     @State private var showStats = false
+    @State private var showPriceCheck = false
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
@@ -47,6 +48,7 @@ struct LibraryView: View {
         }
         .sheet(isPresented: $showAdd) { AddGameView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showPriceCheck) { PriceCheckView() }
     }
 
     private var libraryStack: some View {
@@ -130,6 +132,7 @@ struct LibraryView: View {
                                 Label("Platform boxes", systemImage: store.coverArt == .box ? "checkmark" : "shippingbox")
                             }
                         }
+                        Button("Price check", systemImage: "dollarsign.circle") { showPriceCheck = true }
                         Button("Statistics", systemImage: "chart.bar") { showStats = true }
                         Section("Sort") {
                             Button {

@@ -700,3 +700,145 @@ func TestLibraryAttachesPriceChartingValue(t *testing.T) {
 		t.Fatalf("%v", list.Items[0])
 	}
 }
+
+func TestPriceCheckDoesNotCreateLibraryItem(t *testing.T) {
+	h := testHandler(t)
+	h.cfg.PriceChartingToken = "test-token"
+	loose, cib, neu := 2495, 5999, 12000
+	h.pc = fakePrices{
+		search: []pricecharting.Product{{
+			ID: "3584", Name: "Super Mario Sunshine", Console: "Gamecube",
+			Loose: &loose, CIB: &cib, New: &neu,
+		}},
+	}
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/prices/check?title=Super+Mario+Sunshine&platform=Nintendo+GameCube", nil)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("unauth status %d", res.StatusCode)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/prices/check", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("want 400 got %d", res.StatusCode)
+	}
+
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/v1/prices/check?title=Super+Mario+Sunshine&platform=Nintendo+GameCube", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err = client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		b, _ := io.ReadAll(res.Body)
+		t.Fatalf("status %d %s", res.StatusCode, b)
+	}
+	var got priceCheckResponse
+	if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "ok" || got.Value == nil {
+		t.Fatalf("%+v", got)
+	}
+	if got.Value.PCID != "3584" || got.Value.CIBCents == nil || *got.Value.CIBCents != 5999 {
+		t.Fatalf("value %+v", got.Value)
+	}
+	if got.Value.LooseCents == nil || *got.Value.LooseCents != 2495 {
+		t.Fatalf("loose %+v", got.Value)
+	}
+	if got.Value.NewCents == nil || *got.Value.NewCents != 12000 {
+		t.Fatalf("new %+v", got.Value)
+	}
+
+	items, err := h.store.List(context.Background(), store.ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("library mutated: %d items", len(items))
+	}
+	var n int
+	if err := h.store.DB.QueryRow("SELECT COUNT(*) FROM price_quotes").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("price quotes persisted: %d", n)
+	}
+}
+
+func TestPriceCheckBarcodeUPC(t *testing.T) {
+	h := testHandler(t)
+	h.cfg.PriceChartingToken = "test-token"
+	loose, cib := 1500, 4000
+	h.pc = fakePrices{
+		upc: pricecharting.Product{
+			ID: "upc-1", Name: "Luigi's Mansion", Console: "Gamecube",
+			Loose: &loose, CIB: &cib,
+		},
+	}
+	srv := httptest.NewServer(h.Router())
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/prices/check?barcode=014633190366", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		b, _ := io.ReadAll(res.Body)
+		t.Fatalf("status %d %s", res.StatusCode, b)
+	}
+	var got priceCheckResponse
+	if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "ok" || got.Value == nil || got.Value.PCID != "upc-1" {
+		t.Fatalf("%+v", got)
+	}
+	if got.Barcode != "014633190366" {
+		t.Fatalf("barcode %q", got.Barcode)
+	}
+	items, err := h.store.List(context.Background(), store.ListFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("library mutated: %d items", len(items))
+	}
+}
+
+func TestPriceCheckNotConfigured(t *testing.T) {
+	srv := httptest.NewServer(testServer(t))
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	token := loginToken(t, client, srv.URL)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/prices/check?title=Halo", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("want 503 got %d", res.StatusCode)
+	}
+}

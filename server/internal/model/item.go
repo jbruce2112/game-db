@@ -40,9 +40,9 @@ type Value struct {
 	URL         string `json:"url"`
 	Source      string `json:"source,omitempty"`
 	Listings    int    `json:"listings,omitempty"`
-	LooseCents  *int   `json:"loose_cents"`
-	CIBCents    *int   `json:"cib_cents"`
-	NewCents    *int   `json:"new_cents"`
+	LooseCents  *int   `json:"loose_cents,omitempty"`
+	CIBCents    *int   `json:"cib_cents,omitempty"`
+	NewCents    *int   `json:"new_cents,omitempty"`
 }
 
 func NormalizeCompleteness(s string) string {

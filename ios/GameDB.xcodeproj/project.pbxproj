@@ -24,11 +24,13 @@
 		A1000000000000000000000C /* CoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* CoverView.swift */; };
 		A10000000000000000000013 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* StatsView.swift */; };
 		A10000000000000000000014 /* ShelfStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* ShelfStats.swift */; };
+		A10000000000000000000016 /* PriceCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* PriceCheckView.swift */; };
 		A1000000000000000000000D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* Assets.xcassets */; };
 		A1000000000000000000000E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C10000000000000000000002 /* GRDB */; };
 		A10000000000000000000020 /* GamePeekPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* GamePeekPreviewTests.swift */; };
 		A10000000000000000000022 /* ShelfStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* ShelfStatsTests.swift */; };
 		A10000000000000000000023 /* LibraryCSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000023 /* LibraryCSVTests.swift */; };
+		A10000000000000000000024 /* PriceCheckDecodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000024 /* PriceCheckDecodeTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,11 +62,13 @@
 		B1000000000000000000000C /* CoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverView.swift; sourceTree = "<group>"; };
 		B10000000000000000000013 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* ShelfStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfStats.swift; sourceTree = "<group>"; };
+		B10000000000000000000016 /* PriceCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceCheckView.swift; sourceTree = "<group>"; };
 		B1000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000000000000000000000F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10000000000000000000020 /* GamePeekPreviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePeekPreviewTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000022 /* ShelfStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfStatsTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000023 /* LibraryCSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryCSVTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000024 /* PriceCheckDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceCheckDecodeTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000021 /* GameDBTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GameDBTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -159,6 +163,7 @@
 				B1000000000000000000000B /* SettingsView.swift */,
 				B1000000000000000000000C /* CoverView.swift */,
 				B10000000000000000000013 /* StatsView.swift */,
+				B10000000000000000000016 /* PriceCheckView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -169,6 +174,7 @@
 				B10000000000000000000020 /* GamePeekPreviewTests.swift */,
 				B10000000000000000000022 /* ShelfStatsTests.swift */,
 				B10000000000000000000023 /* LibraryCSVTests.swift */,
+				B10000000000000000000024 /* PriceCheckDecodeTests.swift */,
 			);
 			path = GameDBTests;
 			sourceTree = "<group>";
@@ -292,6 +298,7 @@
 				A1000000000000000000000C /* CoverView.swift in Sources */,
 				A10000000000000000000013 /* StatsView.swift in Sources */,
 				A10000000000000000000014 /* ShelfStats.swift in Sources */,
+				A10000000000000000000016 /* PriceCheckView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -302,6 +309,7 @@
 				A10000000000000000000020 /* GamePeekPreviewTests.swift in Sources */,
 				A10000000000000000000022 /* ShelfStatsTests.swift in Sources */,
 				A10000000000000000000023 /* LibraryCSVTests.swift in Sources */,
+				A10000000000000000000024 /* PriceCheckDecodeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

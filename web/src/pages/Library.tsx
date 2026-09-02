@@ -97,6 +97,12 @@ export default function Library({
           >
             Stats
           </Link>
+          <Link
+            to="/price-check"
+            className="rounded-lg border border-[#2a2e38] px-3 py-2 text-sm text-[#9aa3b2]"
+          >
+            Price check
+          </Link>
           <button
             onClick={() => api.exportCSV({ q, platform, sort })}
             disabled={items.length === 0}

@@ -105,6 +105,19 @@ final class APIClient {
         return try JSONDecoder().decode(SearchEnvelope.self, from: data).games
     }
 
+    func checkPrice(title: String, platform: String, barcode: String?) async throws -> PriceCheckResult {
+        var comps = URLComponents(url: try url("/v1/prices/check"), resolvingAgainstBaseURL: false)!
+        var items: [URLQueryItem] = []
+        if !title.isEmpty { items.append(URLQueryItem(name: "title", value: title)) }
+        if !platform.isEmpty { items.append(URLQueryItem(name: "platform", value: platform)) }
+        if let barcode, !barcode.isEmpty { items.append(URLQueryItem(name: "barcode", value: barcode)) }
+        comps.queryItems = items
+        let req = try request(url: comps.url!, method: "GET")
+        let (data, resp) = try await session.data(for: req)
+        try throwIfNeeded(resp, data: data)
+        return try PriceCheckResult.decode(from: data)
+    }
+
     func createFromIGDB(gameId: Int64, platformId: Int64?, region: String?, completeness: String, barcode: String? = nil) async throws -> LibraryItem {
         struct Body: Codable {
             var igdbGameId: Int64

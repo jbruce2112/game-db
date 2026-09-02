@@ -82,6 +82,7 @@ func (h *Handler) Router() http.Handler {
 	mux.HandleFunc("GET /v1/platforms", h.auth(h.platforms))
 	mux.HandleFunc("GET /v1/search/games", h.auth(h.searchGames))
 	mux.HandleFunc("GET /v1/search/barcode", h.auth(h.searchBarcode))
+	mux.HandleFunc("GET /v1/prices/check", h.auth(h.checkPrice))
 	mux.HandleFunc("GET /v1/covers/{id}", h.auth(h.cover))
 	mux.HandleFunc("GET /v1/library/{id}/cover", h.auth(h.libraryCover))
 	mux.HandleFunc("GET /v1/library/{id}/box-cover", h.auth(h.libraryBoxCover))
