@@ -180,6 +180,7 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 
 **Next**
 
+- ebay pricing issues
 - Duplicate game detection/warning when adding
 - More graceful bulk add flow
 - Require completeness when adding (do not allow leaving it unset)
