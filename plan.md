@@ -178,6 +178,12 @@ Web CRUD uses the resource routes. iOS prefers `/sync` after first load but may 
 - Local SQLite as the working copy at all times
 - Platform sidebar: filter the library by console with per-platform counts
 
+**Next**
+
+- Duplicate game detection/warning when adding
+- More graceful bulk add flow
+- Require completeness when adding (do not allow leaving it unset)
+
 **Explicitly not v1** (backlog)
 
 - Wishlist, multiple collections, hardware, amiibo
